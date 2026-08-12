@@ -71,7 +71,7 @@
     - `decrypt(ciphertext: bytes, tag: bytes, associated_data: bytes) -> bytes` or raises
   - Uses AES-256-GCM with 12-byte random IV (prepended to ciphertext)
 
-- [ ] 2.3 **Write tests:**
+- [x] 2.3 **Write tests:**
   - `tests/test_identity.py`
     - Generate → save → load round-trip
     - Sign → verify round-trip

@@ -28,6 +28,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 HKDF_INFO = b"localnetwork-tunnel-v1"
 SESSION_KEY_LENGTH = 32  # AES-256
 NONCE_LENGTH = 12        # GCM standard nonce size
+TAG_LENGTH = 16          # GCM auth tag size
 
 
 class EncryptionError(RuntimeError):
@@ -108,8 +109,8 @@ class CipherContext:
         """
         nonce = os.urandom(NONCE_LENGTH)
         sealed = self._aead.encrypt(nonce, plaintext, associated_data)
-        ciphertext = sealed[: -AESGCM.tag_size]
-        tag = sealed[-AESGCM.tag_size :]
+        ciphertext = sealed[:-TAG_LENGTH]
+        tag = sealed[-TAG_LENGTH:]
         return nonce + ciphertext, tag
 
     def decrypt(
@@ -139,6 +140,7 @@ __all__ = [
     "HKDF_INFO",
     "SESSION_KEY_LENGTH",
     "NONCE_LENGTH",
+    "TAG_LENGTH",
     "EncryptionError",
     "DecryptionError",
     "generate_ecdh_keypair",

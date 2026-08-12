@@ -48,6 +48,11 @@ class LocationBlock:
     compress: bool = True
     rate_limit: int = 0  # requests/second (0 = unlimited)
     basic_auth: str = ""  # path to htpasswd file
+    # WebSocket support
+    ws_enabled: bool = True
+    ws_timeout: float = 300.0  # idle timeout in seconds
+    ws_max_message_size: int = 1024 * 1024  # 1 MiB
+    ws_ping_interval: float = 30.0  # seconds between pings
 
 
 @dataclass
@@ -187,6 +192,10 @@ def _parse_config(raw: dict) -> ProxyConfig:
             compress=loc_raw.get("compress", True),
             rate_limit=loc_raw.get("rate_limit", 0),
             basic_auth=loc_raw.get("basic_auth", ""),
+            ws_enabled=loc_raw.get("ws_enabled", True),
+            ws_timeout=loc_raw.get("ws_timeout", 300.0),
+            ws_max_message_size=loc_raw.get("ws_max_message_size", 1024 * 1024),
+            ws_ping_interval=loc_raw.get("ws_ping_interval", 30.0),
         ))
 
     # SSL

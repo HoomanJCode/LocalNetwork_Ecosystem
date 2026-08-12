@@ -39,7 +39,7 @@
   - All message type dataclasses: `RegisterMessage`, `AuthChallenge`, `AuthResponse`, `CreateNetwork`, `JoinNetwork`, `PeerOnline`, `PeerOffline`, `PeerEndpoints`, `Heartbeat`, etc.
   - Service messages: `ExposeService`, `UnexposeService`, `ServiceList`, `ServiceAdded`, `ServiceRemoved`, `MapService`, `UnmapService`
 
-- [ ] 1.3 **`common/frame.py`** — data-plane frame struct
+- [x] 1.3 **`common/frame.py`** — data-plane frame struct
   - `FrameHeader` dataclass: version, type, payload_length, seq_num
   - `pack_frame(header, encrypted_payload, auth_tag) -> bytes`
   - `unpack_frame(data: bytes) -> tuple[FrameHeader, bytes, bytes]` (header, ciphertext, tag)

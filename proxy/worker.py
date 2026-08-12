@@ -1,17 +1,26 @@
 """Reverse proxy worker process (DESIGN.md §7.2).
 
 Each worker runs an asyncio event loop, accepts connections from the shared
-listen sockets, and spawns Connection coroutines for each client.
+listen sockets, and handles each client with the :class:`proxy.connection.Connection`
+HTTP state machine (routing, load balancing, health checks, compression,
+access logging, and status tracking).
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import socket
-from typing import Dict
+from typing import Dict, List, Optional
 
+from proxy.compression import GzipCompressor
 from proxy.config import ProxyConfig
+from proxy.connection import Connection
+from proxy.health_check import HealthMonitor
+from proxy.load_balancer import create_balancer
+from proxy.logging import AccessLogger
+from proxy.status import StatusCollector
 
 log = logging.getLogger("localnetwork.proxy.worker")
 
@@ -28,7 +37,26 @@ class WorkerProcess:
         self.worker_id = worker_id
         self.config = config
         self._listen_sockets = listen_sockets
-        self._connections = 0
+
+        # Build the runtime components for this worker from config.
+        self.upstreams = {u.name: u for u in config.upstreams}
+        self.balancers = {
+            u.name: create_balancer(u.algorithm) for u in config.upstreams
+        }
+        self.health_monitor = HealthMonitor()
+        self.compressor = (
+            GzipCompressor(
+                level=config.gzip_level, min_length=config.gzip_min_length
+            )
+            if config.gzip_enabled
+            else None
+        )
+        self.access_logger = (
+            AccessLogger(config.access_log, config.log_format)
+            if config.access_log
+            else None
+        )
+        self.status_collector = StatusCollector()
 
     def run(self) -> None:
         """Start the worker's event loop and accept connections."""
@@ -40,20 +68,37 @@ class WorkerProcess:
         finally:
             loop.close()
 
+    async def handle_connection(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        """Handle one client connection with the HTTP engine."""
+        connection = Connection(
+            reader,
+            writer,
+            self.config,
+            self.upstreams,
+            self.balancers,
+            self.health_monitor,
+            self.compressor,
+            self.access_logger,
+            self.status_collector,
+        )
+        await connection.handle()
+
     async def _serve(self) -> None:
         """Accept connections from all listen sockets."""
         log.info("worker %d starting", self.worker_id)
 
+        if self.access_logger is not None:
+            await self.access_logger.start()
+
         # Create asyncio servers for each listen socket
-        servers = []
-        for port, sock in self._listen_sockets.items():
-            server = await asyncio.get_running_loop().create_server(
-                lambda: _ConnectionProtocol(self),
-                sock=sock,
-            )
+        servers: List[asyncio.AbstractServer] = []
+        for _port, sock in self._listen_sockets.items():
+            server = await asyncio.start_server(self.handle_connection, sock=sock)
             servers.append(server)
 
-        log.info("worker %d ready (pid=%d)", self.worker_id, __import__("os").getpid())
+        log.info("worker %d ready (pid=%d)", self.worker_id, os.getpid())
 
         # Keep running until interrupted
         try:
@@ -63,52 +108,9 @@ class WorkerProcess:
         finally:
             for server in servers:
                 server.close()
+            if self.access_logger is not None:
+                await self.access_logger.stop()
             log.info("worker %d stopped", self.worker_id)
 
 
-class _ConnectionProtocol(asyncio.Protocol):
-    """Minimal protocol that handles incoming connections."""
-
-    def __init__(self, worker: WorkerProcess) -> None:
-        self.worker = worker
-        self.transport: asyncio.Transport | None = None
-        self._buffer = b""
-
-    def connection_made(self, transport: asyncio.Transport) -> None:
-        self.transport = transport
-        self.worker._connections += 1
-        peername = transport.get_extra_info("peername", ("?", 0))
-        log.debug("worker %d: connection from %s:%d", self.worker.worker_id, *peername)
-
-    def data_received(self, data: bytes) -> None:
-        """Process incoming HTTP data."""
-        # For now, echo basic response
-        self._buffer += data
-        if b"\r\n\r\n" in self._buffer:
-            self._handle_request()
-
-    def _handle_request(self) -> None:
-        """Minimal HTTP request handler."""
-        import time
-
-        body = (
-            "<html><body><h1>LocalNetwork Proxy</h1>"
-            f"<p>Worker {self.worker.worker_id}</p>"
-            "<p>The reverse proxy is running.</p>"
-            "</body></html>"
-        )
-        response = (
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            f"Content-Length: {len(body)}\r\n"
-            "Connection: close\r\n"
-            f"Server: LocalNetworkProxy/0.1.0\r\n"
-            "\r\n"
-            f"{body}"
-        )
-        if self.transport:
-            self.transport.write(response.encode())
-            self.transport.close()
-
-    def connection_lost(self, exc: Exception | None) -> None:
-        self.worker._connections -= 1
+__all__ = ["WorkerProcess"]

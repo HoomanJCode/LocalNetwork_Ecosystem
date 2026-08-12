@@ -14,8 +14,9 @@
 | **Many small commits per branch — never a single commit** | A branch exists to accumulate a series of fixes/features; merge it only after several small commits (typically 5–20+). A branch with one commit is a warning sign — split the work further. |
 | **One temporary branch per unit of work** | A "unit of work" is a coherent bundle of related fixes or tasks (e.g. all fixes for one feature area, one phase, or a bug cluster from the TODO files). Group related tasks on the same branch; use separate branches for unrelated work. |
 | **Commit small pieces, step by step** | After every logical step (a working function, a test, a wiring change) make a small commit. Never save up edits into one commit at the end. |
+| **Update the todo files before each commit** | Mark completed tasks `[x]` in the todo file as part of (or in the commit right before) the commit that finishes them. Never commit code without reflecting the done work in the todo files. |
 | **Merge with `--no-ff` only** | Always create a merge commit so the branch's commits stay grouped in history. Never fast-forward. |
-| **Update the todo files to reflect reality** | Mark tasks done, rename files that fully passed. |
+| **Keep the todo files in sync with reality** | Rename fully-passed files to `*-passed.md` and update the `TODO.md` index. |
 
 ---
 
@@ -40,8 +41,8 @@
 │       python -m pytest tests/test_xxx.py -v                     │
 │     Fix failures with further small commits, then re-run.       │
 │                                                                 │
-│  5. BEFORE merging: update the todo file                        │
-│     - Mark completed task items as [x]                          │
+│  5. Update the todo file BEFORE each commit (and again at merge)│
+│     - Mark completed task items as [x] as you finish each step  │
 │     - If the whole FILE's phases passed: add "passed" suffix    │
 │                                                                 │
 │  6. Merge the branch into master with --no-ff (never ff)        │
@@ -137,10 +138,14 @@ wiring change, a bug fix). Small commits are the default, not the exception:
 | Wire it into the system | `feat(client): integrate nat_traversal into tunnel_manager` |
 | Add tests | `test(nat): add hole-punch success and timeout tests` |
 | Run tests, fix failures | `fix(nat): handle socket timeout edge case` |
-| Update docs/todos | `docs(todos): mark task 5.1 complete` |
+| Update docs/todos **before the next commit** | `docs(todos): mark task 5.1 complete` |
 
 **A branch should end up with 5–20+ commits.** If you catch yourself staging
 "all remaining changes", stop and break the work into smaller steps instead.
+
+Todo updates are never deferred to the end: mark a task `[x]` in the todo
+file **before** (or in) the commit that completes it, so every commit leaves
+the todo files in sync with the tree.
 
 ### 4.5 Commit hygiene
 

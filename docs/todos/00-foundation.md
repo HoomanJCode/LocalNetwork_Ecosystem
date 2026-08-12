@@ -9,7 +9,7 @@
 ## Phase 0 — Project Skeleton & Tooling
 
 - [x] 0.1 Create directory structure (`server/`, `client/`, `proxy/`, `common/`, `common/web_static/`, `tests/`)
-- [ ] 0.2 Create `requirements.txt` with `cryptography`, `bcrypt`, `python-dotenv`, `pyyaml`, `aiohttp`, `jinja2`
+- [x] 0.2 Create `requirements.txt` with `cryptography`, `bcrypt`, `python-dotenv`, `pyyaml`, `aiohttp`, `jinja2`
 - [ ] 0.3 Create `README.md` with project overview, quickstart, and CLI usage
 - [ ] 0.4 Create `common/__init__.py`, `server/__init__.py`, `client/__init__.py`, `proxy/__init__.py`, `tests/__init__.py`
 - [ ] 0.5 Create shared UI foundation — `common/web_static/css/variables.css` with all design tokens (colors, typography, spacing, radius, shadows), `reset.css`, `layout.css` shell template, `components.css` (cards, tables, badges, forms, buttons, modals, toasts), `utilities.css`

@@ -13,7 +13,7 @@
   - Load from env vars / `.env` via `python-dotenv`
   - Default values
 
-- [ ] 3.2 **`server/protocol.py`**
+- [x] 3.2 **`server/protocol.py`**
   - `parse_message(data: bytes) -> Message` — wraps `common.messages.deserialize`
   - `build_message(msg: Message) -> bytes` — wraps `common.messages.serialize`
   - Validation helpers: `validate_register`, `validate_create_network`, etc.

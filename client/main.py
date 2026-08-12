@@ -640,10 +640,14 @@ def cli_main(argv: Optional[list] = None) -> int:
             def do(channel):
                 return channel.create_network(args.name, args.password, topology)
 
-            network_id = _run_cli_command(args, do)
-            print(f"Created network {args.name!r} with id {network_id}")
-            if args.password:
-                print("Share the network id and password with friends.")
+            result = _run_cli_command(args, do)
+            network_id = result.get("network_id", result) if isinstance(result, dict) else result
+            invite_code = result.get("invite_code", "") if isinstance(result, dict) else ""
+            print(f"Created network {args.name!r}")
+            print(f"  Network ID:  {network_id}")
+            if invite_code:
+                print(f"  Invite code: {invite_code}")
+            print("Share the invite code (or network ID) and password with friends.")
 
         elif args.command == "join":
             def do(channel):

@@ -323,6 +323,8 @@ class MediationServer:
     ) -> None:
         name, password, topology = proto.validate_create_network(msg.payload)
         record = self.networks.create(name, password, client_id, topology)
+        # Generate invite code
+        invite_code = self.networks.generate_invite_code(record.network_id)
         await self._send(
             writer,
             make_message(
@@ -331,6 +333,7 @@ class MediationServer:
                 name=record.name,
                 owner_id=client_id,
                 topology=record.topology,
+                invite_code=invite_code,
             ),
         )
         log.info("client %s created network %s (%s)", client_id, record.network_id, name)
@@ -341,26 +344,41 @@ class MediationServer:
     async def _on_join_network(
         self, client_id: str, writer: asyncio.StreamWriter, msg: Message
     ) -> None:
-        network_id, password = proto.validate_join_network(msg.payload)
-        if self.networks.is_banned(network_id):
+        network_id_or_code, password = proto.validate_join_network(msg.payload)
+
+        # Try invite code first, then network_id
+        record = None
+        if self.networks.is_banned(network_id_or_code):
             await self._send_error(writer, "NETWORK_BANNED", "network is banned")
             return
-        record = self.networks.get(network_id)
-        if record is None:
-            await self._send_error(writer, "NETWORK_NOT_FOUND", "no such network")
-            return
-        if not self.networks.join(network_id, client_id, password):
-            await self._send_error(writer, "WRONG_PASSWORD", "join rejected")
-            return
+
+        # First try as network_id
+        record = self.networks.get(network_id_or_code)
+        if record is not None:
+            if not self.networks.join(network_id_or_code, client_id, password):
+                await self._send_error(writer, "WRONG_PASSWORD", "join rejected")
+                return
+        else:
+            # Try as invite code
+            record = self.networks.join_by_invite_code(
+                network_id_or_code, client_id, password
+            )
+            if record is None:
+                await self._send_error(
+                    writer, "NETWORK_NOT_FOUND",
+                    "no such network — check the network id or invite code"
+                )
+                return
+
         await self._send(
             writer,
             make_message(
                 NetworkJoined,
-                network_id=network_id,
+                network_id=record.network_id,
                 name=record.name,
             ),
         )
-        log.info("client %s joined network %s", client_id, network_id)
+        log.info("client %s joined network %s", client_id, record.network_id)
         await self._announce_peer_online(client_id)
 
     async def _on_leave_network(

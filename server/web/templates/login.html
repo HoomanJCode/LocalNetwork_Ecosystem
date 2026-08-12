@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — {{ panel_name }} — LocalNetwork</title>
+    <style>
+        :root {
+            --bg-primary: #0f1117; --bg-secondary: #1a1d27; --bg-tertiary: #242836;
+            --text-primary: #e4e6f0; --text-secondary: #8b90a5;
+            --accent: #6366f1; --accent-hover: #818cf8;
+            --danger: #ef4444; --border: #2d3245; --radius-md: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh;
+        }
+        .login-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-card h1 { font-size: 24px; margin-bottom: 8px; }
+        .login-card p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+        .error-msg {
+            background: rgba(239,68,68,0.1);
+            color: var(--danger);
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        label { display: block; font-size: 14px; margin-bottom: 6px; color: var(--text-secondary); }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid #3a4058;
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        input:focus { outline: none; border-color: var(--accent); }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover { background: var(--accent-hover); }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <h1>🔗 LocalNetwork</h1>
+    <p>{{ panel_name }} — Sign in to continue</p>
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/login">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="admin" required autofocus>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Password" required>
+        <button type="submit">Sign in</button>
+    </form>
+</div>
+</body>
+</html>

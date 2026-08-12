@@ -24,7 +24,7 @@ class TestIntegration:
         from server.main import MediationServer
         from server.config import ServerConfig
 
-        config = ServerConfig(port=0)  # random port
+        config = ServerConfig(port=0, web_port=0)  # random port, no web panel
         server = MediationServer(config)
 
         # Start server in background
@@ -48,7 +48,7 @@ class TestIntegration:
         from server.main import MediationServer
         from server.config import ServerConfig
 
-        config = ServerConfig(port=0)
+        config = ServerConfig(port=0, web_port=0)
         server = MediationServer(config)
         server_task = asyncio.create_task(server.start())
         await asyncio.sleep(0.1)
@@ -81,7 +81,7 @@ class TestIntegration:
         from server.network_manager import NetworkManager
         from server.registry import ClientRegistry
 
-        config = ServerConfig(port=0)
+        config = ServerConfig(port=0, web_port=0)
         server = MediationServer(config)
         server_task = asyncio.create_task(server.start())
         await asyncio.sleep(0.1)

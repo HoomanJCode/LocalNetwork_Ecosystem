@@ -108,7 +108,13 @@ def main(argv: Optional[list] = None) -> int:
 
 
 def _start_admin_panel(config: ProxyConfig) -> None:
-    """Start the admin web panel in a background daemon thread."""
+    """Start the admin web panel in a background daemon thread.
+
+    Note: this runs in the master process and reports the configured upstream
+    topology plus master uptime. Per-worker traffic/health counters are not
+    aggregated into this panel yet (cross-worker stats require IPC), so
+    ``/proxy-status`` connection counters start at zero.
+    """
     from aiohttp import web
 
     from proxy.status import StatusCollector

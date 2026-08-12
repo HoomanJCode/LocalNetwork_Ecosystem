@@ -56,16 +56,17 @@ class TestIntegration:
         try:
             # Create a network programmatically
             from server.network_manager import NetworkManager
+            from server.registry import ClientRegistry
 
-            nm = NetworkManager()
-            network_id = nm.create_network("testnet", "password", "owner1", "mesh")
+            nm = NetworkManager(ClientRegistry())
+            network_id = nm.create("testnet", "password", "owner1", "mesh").network_id
             assert network_id
 
-            networks = nm.list_networks()
+            networks = nm.list_all()
             assert len(networks) >= 1
-            assert any(n.get("name") == "testnet" for n in networks)
+            assert any(n.name == "testnet" for n in networks)
         finally:
-            server.stop()
+            await server.shutdown()
             server_task.cancel()
             try:
                 await server_task
@@ -78,6 +79,7 @@ class TestIntegration:
         from server.main import MediationServer
         from server.config import ServerConfig
         from server.network_manager import NetworkManager
+        from server.registry import ClientRegistry
 
         config = ServerConfig(port=0)
         server = MediationServer(config)
@@ -85,17 +87,17 @@ class TestIntegration:
         await asyncio.sleep(0.1)
 
         try:
-            nm = NetworkManager()
-            nid = nm.create_network("join-test", "secret", "owner", "mesh")
+            nm = NetworkManager(ClientRegistry())
+            nid = nm.create("join-test", "secret", "owner", "mesh").network_id
 
             # Simulate a second client joining
-            success = nm.join_network(nid, "secret", "client2")
+            success = nm.join(nid, "client2", "secret")
             assert success
 
-            members = nm.get_members(nid)
+            members = nm.members(nid)
             assert "client2" in members
         finally:
-            server.stop()
+            await server.shutdown()
             server_task.cancel()
             try:
                 await server_task

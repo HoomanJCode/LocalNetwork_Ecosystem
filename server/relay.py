@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+from collections import deque
 from typing import Dict, List, Optional, Set, Tuple
 
 from common import constants
@@ -25,11 +26,15 @@ MAX_RELAY_QUEUE = 1024  # frames buffered per destination before backpressure
 
 
 class RelayForwarder:
-    """Per-destination queues of (src_id, raw_frame) relayed data."""
+    """Per-destination queues of (src_id, raw_frame) relayed data.
+
+    Internally uses ``collections.deque`` buffers so stale frames can be
+    purged when a source client disconnects.
+    """
 
     def __init__(self, server) -> None:
         self.server = server
-        self._queues: Dict[str, asyncio.Queue] = {}
+        self._queues: Dict[str, deque] = {}
         self._paths: Set[Tuple[str, str]] = set()
         self._bytes_relayed: Dict[Tuple[str, str], int] = {}
         self._dropped_frames: int = 0
@@ -51,10 +56,10 @@ class RelayForwarder:
         self._paths.add((dst_id, src_id))
         return is_new
 
-    def _queue_for(self, client_id: str) -> asyncio.Queue:
+    def _queue_for(self, client_id: str) -> deque:
         queue = self._queues.get(client_id)
         if queue is None:
-            queue = asyncio.Queue(maxsize=MAX_RELAY_QUEUE)
+            queue = deque()
             self._queues[client_id] = queue
         return queue
 
@@ -73,12 +78,11 @@ class RelayForwarder:
         queue = self._queues.get(dst_id)
         if queue is None or not self.has_path(src_id, dst_id):
             return False
-        try:
-            queue.put_nowait((src_id, raw_frame))
-        except asyncio.QueueFull:
+        if len(queue) >= MAX_RELAY_QUEUE:
             self._dropped_frames += 1
             log.warning("relay queue full for %s; dropping frame", dst_id)
             return False
+        queue.append((src_id, raw_frame))
         key = (src_id, dst_id)
         self._bytes_relayed[key] = self._bytes_relayed.get(key, 0) + len(raw_frame)
         return True
@@ -86,11 +90,11 @@ class RelayForwarder:
     def pending_frames(self, dst_id: str) -> List[Tuple[str, str]]:
         """Drain and return all queued frames for a client as ``(src, b64)``."""
         queue = self._queues.get(dst_id)
-        if queue is None or queue.empty():
+        if queue is None or not queue:
             return []
         out: List[Tuple[str, str]] = []
-        while not queue.empty():
-            src_id, raw = queue.get_nowait()
+        while queue:
+            src_id, raw = queue.popleft()
             out.append((src_id, base64.b64encode(raw).decode("ascii")))
         return out
 
@@ -102,7 +106,10 @@ class RelayForwarder:
         if queue is None:
             return
         while True:
-            yield await queue.get()
+            if queue:
+                yield queue.popleft()
+            else:
+                await asyncio.sleep(0.01)
 
     # ------------------------------------------------------------------
     # Server integration
@@ -163,8 +170,15 @@ class RelayForwarder:
             )
 
     def drop_client(self, client_id: str) -> None:
-        """Remove all queues and paths involving a disconnected client."""
+        """Remove all queues and paths involving a disconnected client.
+
+        Stale frames that were queued *from* the dropped client are purged
+        from every destination's queue so they are never delivered.
+        """
         self._queues.pop(client_id, None)
+        for dst_id, queue in list(self._queues.items()):
+            kept = deque(item for item in queue if item[0] != client_id)
+            self._queues[dst_id] = kept
         self._paths = {
             (a, b) for (a, b) in self._paths if a != client_id and b != client_id
         }

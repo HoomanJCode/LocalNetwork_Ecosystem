@@ -98,7 +98,7 @@ class ServerConfig:
 
     def validate(self) -> None:
         """Raise ValueError on invalid configuration."""
-        if not (0 < self.port < 65536):
+        if not (0 <= self.port < 65536):
             raise ValueError(f"invalid port: {self.port}")
         if self.web_port is not None and not (0 <= self.web_port < 65536):
             raise ValueError(f"invalid web port: {self.web_port}")

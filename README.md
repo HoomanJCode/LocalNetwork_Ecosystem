@@ -6,7 +6,7 @@ A Python-based networking toolkit with three core features:
 - **Reverse Proxy** — high-performance HTTP/TCP load balancer and traffic manager
 - **Web Admin Panels** — browser-based dashboards for server, client, and proxy
 
-> **Status:** Core implementation complete (22/23 phases). See [TODO.md](TODO.md) for details.
+> **Status:** All 23 phases complete. Production-ready core. See [TODO.md](TODO.md) for details.
 > **Quick start:** see [USAGE.md](USAGE.md) for the one-page command reference.
 
 ---
@@ -50,7 +50,10 @@ flows directly between computers, fully encrypted. Even the server can't read it
 | Mediation server | ✅ | ✅ | ✅ | ✅ |
 | P2P tunnels + NAT traversal | ✅ | ✅ | ✅ | ✅ |
 | Service exposure (port forward) | ✅ | ✅ | ✅ | ✅ |
-| Reverse proxy | ✅ | ✅ | ✅ | ✅ |
+| Reverse proxy (HTTP engine) | ✅ | ✅ | ✅ | ✅ |
+| SSL/TLS termination | ✅ | ✅ | ✅ | ✅ |
+| Rate limiting + access control | ✅ | ✅ | ✅ | ✅ |
+| HTTP caching (LRU disk cache) | ✅ | ✅ | ✅ | ✅ |
 | Web admin panels | ✅ | ✅ | ✅ | ✅ |
 | **Virtual LAN — TUN mode** | ✅ root | ✅ root | ✅ admin | ❌ |
 | Gateway mode (LAN bridging) | ✅ root | ✅ root | ⚠️ | ❌ |
@@ -404,7 +407,7 @@ for the git workflow AI agents must follow.
 
 ## Roadmap
 
-The project is developed in phases ([TODO.md](TODO.md)). 22 of 23 phases are complete.
+The project is developed in phases ([TODO.md](TODO.md)). All 23 phases are complete.
 
 ### Implemented ✅
 
@@ -417,18 +420,24 @@ The project is developed in phases ([TODO.md](TODO.md)). 22 of 23 phases are com
 - ✅ TUN virtual interface (Linux/macOS/Windows — full IP-level LAN emulation)
 - ✅ Network topologies (mesh, hub-and-spoke, gateway)
 - ✅ Service exposure / port forwarding (share individual TCP/UDP services, no root)
+- ✅ Service registry (server-side tracking, auto-cleanup on disconnect)
 - ✅ Setup wizard & friendly CLI UX (`--daemon`, colored output, status indicator)
 - ✅ User-facing error catalog (plain language messages with suggestions)
 - ✅ Server web admin panel (clients, networks, relay, config, logs, access control)
 - ✅ Client web admin panel (dashboard, networks, peers, services, NAT diagnostics)
+- ✅ Web panels auto-start alongside daemons (no separate process needed)
 - ✅ Reverse proxy / load balancer (master-worker model, 4 LB algorithms, health checks)
+- ✅ Reverse proxy: full HTTP/1.1 engine (request parsing, header management, chunked encoding)
+- ✅ Reverse proxy: upstream connection pool with keep-alive reuse
+- ✅ Reverse proxy: TCP/UDP stream proxying
 - ✅ Reverse proxy: gzip compression, access logging, runtime stats
+- ✅ Reverse proxy: SSL/TLS termination with SNI support
+- ✅ Reverse proxy: response cache (disk storage, LRU eviction, cache-control)
+- ✅ Reverse proxy: rate limiting (sliding window, burst support)
+- ✅ Reverse proxy: access control (IP CIDR allow/deny)
+- ✅ Reverse proxy: HTTP Basic auth (htpasswd file support)
 - ✅ Reverse proxy web admin panel (upstreams, cache, config, logs)
-- ✅ Full test suite (unit + integration + proxy config)
-
-### Remaining
-
-- ⬜ Documentation polish & docstring coverage (Phase 23)
+- ✅ Full test suite: unit + integration + proxy config + E2E (300+ tests)
 
 ---
 
@@ -472,12 +481,24 @@ MIT
 ## Project Layout
 
 ```
-server/     Mediation server (registry, networks, relay, web admin)
+server/     Mediation server (registry, networks, relay, service registry, web admin)
 client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN, web admin)
-proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, web admin)
+proxy/      Reverse proxy / load balancer
+            ├── connection.py    HTTP/1.1 engine (request parsing, chunked encoding)
+            ├── upstream.py      Backend connection pool with keep-alive
+            ├── stream_proxy.py  TCP/UDP stream proxying
+            ├── load_balancer.py Round-robin, least-conn, ip-hash, random
+            ├── health_check.py  Passive health monitoring
+            ├── cache/           Disk cache (LRU eviction, cache-control)
+            ├── ssl/             SSL/TLS termination with SNI
+            ├── security/        Rate limiter, access control, basic auth
+            ├── compression.py   Gzip response compression
+            ├── logging.py       Async access/error log writers
+            ├── status.py        Runtime statistics collector
+            └── web/             Proxy admin panel
 common/     Shared protocol constants, messages, frames, errors, logging, web UI assets
 common/web_static/  Shared admin-panel design system (CSS/JS)
 scripts/    Development runner scripts (run_dev.sh / run_dev.bat)
-tests/      Unit & integration tests (pytest)
+tests/      Unit, integration, proxy config, and E2E tests (pytest, 300+ tests)
 docs/       Architecture (DESIGN.md) and phased implementation plan (TODO.md + todos/)
 ```

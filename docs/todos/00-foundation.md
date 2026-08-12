@@ -15,7 +15,7 @@
 - [x] 0.5 Create shared UI foundation — `common/web_static/css/variables.css` with all design tokens (colors, typography, spacing, radius, shadows), `reset.css`, `layout.css` shell template, `components.css` (cards, tables, badges, forms, buttons, modals, toasts), `utilities.css`
 - [x] 0.6 Create shared JS — `common/web_static/js/sse.js` (EventSource helper), `dashboard.js` (counters, sparklines), `tables.js` (sortable/filterable), `ui.js` (toasts, modals, sidebar)
 - [x] 0.7 Create `tests/conftest.py` — shared fixtures (unused port finder, temp dirs, event loop)
-- [ ] 0.8 Set up `pytest` as test runner; verify `python -m pytest tests/` runs (0 tests)
+- [x] 0.8 Set up `pytest` as test runner; verify `python -m pytest tests/` runs (0 tests)
 
 ---
 

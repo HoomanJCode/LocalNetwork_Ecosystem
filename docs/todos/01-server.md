@@ -82,5 +82,5 @@
   - Integrated into `handle_client`: if a client has active relay paths, yield relayed frames
     on that client's control channel (multiplexed with control messages via a relay frame wrapper)
 
-- [ ] 4.2 **Write tests:**
+- [x] 4.2 **Write tests:**
   - `tests/test_relay.py` — relay frame from A→B, consume on B, verify ordering

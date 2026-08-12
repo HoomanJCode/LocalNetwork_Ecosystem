@@ -23,6 +23,8 @@ def create_app(
     health_monitor: Any = None,
     cache_manager: Any = None,
     status_collector: Any = None,
+    config: Any = None,
+    balancers: Any = None,
 ) -> web.Application:
     """Create the proxy admin web application."""
 
@@ -32,6 +34,8 @@ def create_app(
     app["health_monitor"] = health_monitor
     app["cache_manager"] = cache_manager
     app["status_collector"] = status_collector
+    app["config"] = config
+    app["balancers"] = balancers
     app["start_time"] = APP_START_TIME
 
     # Jinja2
@@ -56,6 +60,7 @@ def create_app(
     app.router.add_get("/config", config_page)
     app.router.add_get("/logs", logs_page)
     app.router.add_get("/api/dashboard", api_dashboard)
+    app.router.add_get("/proxy-status", proxy_status)
 
     return app
 
@@ -90,3 +95,19 @@ async def logs_page(request: web.Request) -> web.Response:
 async def api_dashboard(request: web.Request) -> web.Response:
     sc = request.app.get("status_collector")
     return web.json_response(sc.get_stats() if sc else {})
+
+
+async def proxy_status(request: web.Request) -> web.Response:
+    """Return runtime stats and upstream health (DESIGN.md §7.14)."""
+    from proxy.status import upstream_summary
+
+    sc = request.app.get("status_collector")
+    stats = sc.get_stats() if sc else {}
+    config = request.app.get("config")
+    upstreams = getattr(config, "upstreams", []) if config is not None else []
+    stats["upstreams"] = upstream_summary(
+        upstreams,
+        health_monitor=request.app.get("health_monitor"),
+        balancers=request.app.get("balancers"),
+    )
+    return web.json_response(stats)

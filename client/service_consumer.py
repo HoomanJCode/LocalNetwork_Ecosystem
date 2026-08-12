@@ -34,6 +34,7 @@ class MappedService:
     provider_id: str  # which peer provides this service
     local_port: int
     strategy: str = "auto"
+    remote_port: Optional[int] = None  # the remote service's own port
     created_at: float = field(default_factory=time.time)
 
 
@@ -71,6 +72,7 @@ class ServiceConsumer:
         protocol: str = "tcp",
         local_port: Optional[int] = None,
         strategy: str = "auto",
+        remote_port: Optional[int] = None,
     ) -> int:
         """Map a remote service to a local port.
 
@@ -81,6 +83,8 @@ class ServiceConsumer:
             protocol: ``"tcp"`` or ``"udp"``.
             local_port: Desired local port (only for ``manual`` strategy).
             strategy: One of ``"same"``, ``"auto"``, ``"manual"``.
+            remote_port: The port the service listens on remotely (used by the
+                ``"same"`` strategy).
 
         Returns:
             The local port the service is mapped to.
@@ -95,7 +99,7 @@ class ServiceConsumer:
                 raise ValueError("manual strategy requires local_port")
             port = local_port
         elif strategy == "same":
-            port = self._find_same_port(service_id) or self._find_auto_port()
+            port = self._find_same_port(remote_port) or self._find_auto_port()
         elif strategy == "auto":
             port = self._find_auto_port()
         else:
@@ -110,6 +114,7 @@ class ServiceConsumer:
             provider_id=provider_id,
             local_port=port,
             strategy=strategy,
+            remote_port=remote_port,
         )
         self._mapped[map_id] = mapped
 
@@ -269,10 +274,20 @@ class ServiceConsumer:
                 return port
         raise OSError("no free ports in auto range")
 
-    def _find_same_port(self, service_id: str) -> Optional[int]:
-        """Try to use the remote service's port locally; returns None if in use."""
-        # The remote port info would come from the service record
-        # For now, this is a placeholder
+    def _find_same_port(self, remote_port: Optional[int]) -> Optional[int]:
+        """Use the remote service's port locally; returns None if unavailable.
+
+        Args:
+            remote_port: The port the service listens on remotely.
+
+        Returns:
+            ``remote_port`` if it is free locally, else ``None`` (so the
+            caller can fall back to the auto strategy).
+        """
+        if remote_port is None:
+            return None
+        if self._port_is_free(remote_port):
+            return remote_port
         return None
 
     @staticmethod

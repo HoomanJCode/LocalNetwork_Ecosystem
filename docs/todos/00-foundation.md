@@ -62,7 +62,7 @@
   - `sign_challenge(private_key, challenge: bytes) -> bytes` — SHA-256 + RSA sign
   - `verify_challenge(public_key, challenge: bytes, signature: bytes) -> bool`
 
-- [ ] 2.2 **`client/encryption.py`**
+- [x] 2.2 **`client/encryption.py`**
   - `generate_ecdh_keypair() -> ec.EllipticCurvePrivateKey` — X25519 or P-256
   - `derive_session_key(our_private, peer_public) -> bytes` — ECDH + HKDF-SHA256 → 32-byte key
   - `CipherContext` class:

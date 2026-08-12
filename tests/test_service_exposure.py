@@ -110,12 +110,47 @@ class TestServiceConsumer:
         assert port1 >= 50000
         assert port2 >= 50000
 
+    @pytest.mark.asyncio
+    async def test_map_same_port_uses_remote_port(self, unused_port):
+        """The 'same' strategy maps to the remote service's port when free."""
+        free = unused_port()
+        consumer = ServiceConsumer()
+        port = await consumer.map_service(
+            "svc-same",
+            "peer-d",
+            protocol="tcp",
+            strategy="same",
+            remote_port=free,
+        )
+        assert port == free
+        mapped = consumer.list_mapped()
+        assert mapped[0].local_port == free
+        assert mapped[0].remote_port == free
+
+    @pytest.mark.asyncio
+    async def test_same_port_falls_back_to_auto_when_taken(self):
+        """The 'same' strategy falls back to auto when the port is occupied."""
+        consumer = ServiceConsumer()
+        await consumer.map_service(
+            "a", "p1", protocol="tcp", strategy="manual", local_port=30000
+        )
+        port = await consumer.map_service(
+            "b", "p2", protocol="tcp", strategy="same", remote_port=30000
+        )
+        assert port != 30000
+        assert port >= 50000
+
+    @pytest.mark.asyncio
+    async def test_same_port_without_remote_port_falls_back_to_auto(self):
+        """The 'same' strategy needs a remote port; otherwise it uses auto."""
+        consumer = ServiceConsumer()
+        port = await consumer.map_service("x", "p3", protocol="tcp", strategy="same")
+        assert port >= 50000
+
     def test_invalid_strategy_raises(self):
         consumer = ServiceConsumer()
         with pytest.raises(ValueError):
-            asyncio.get_event_loop().run_until_complete(
-                consumer.map_service("x", "y", strategy="invalid")
-            )
+            asyncio.run(consumer.map_service("x", "y", strategy="invalid"))
 
     @pytest.mark.asyncio
     async def test_shutdown_unmaps_all(self):

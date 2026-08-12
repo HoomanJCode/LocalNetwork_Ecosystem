@@ -14,8 +14,9 @@
 | **Many small commits per branch — never a single commit** | A branch exists to accumulate a series of fixes/features; merge it only after several small commits (typically 5–20+). A branch with one commit is a warning sign — split the work further. |
 | **One temporary branch per unit of work** | A "unit of work" is a coherent bundle of related fixes or tasks (e.g. all fixes for one feature area, one phase, or a bug cluster from the TODO files). Group related tasks on the same branch; use separate branches for unrelated work. |
 | **Commit small pieces, step by step** | After every logical step (a working function, a test, a wiring change) make a small commit. Never save up edits into one commit at the end. |
+| **Update the todo files before each commit** | Mark completed tasks `[x]` in the todo file as part of (or in the commit right before) the commit that finishes them. Never commit code without reflecting the done work in the todo files. |
 | **Merge with `--no-ff` only** | Always create a merge commit so the branch's commits stay grouped in history. Never fast-forward. |
-| **Update the todo files to reflect reality** | Mark tasks done, rename files that fully passed. |
+| **Keep the todo files in sync with reality** | Rename fully-passed files to `*-passed.md` and update the `TODO.md` index. |
 
 ---
 
@@ -40,8 +41,8 @@
 │       python -m pytest tests/test_xxx.py -v                     │
 │     Fix failures with further small commits, then re-run.       │
 │                                                                 │
-│  5. BEFORE merging: update the todo file                        │
-│     - Mark completed task items as [x]                          │
+│  5. Update the todo file BEFORE each commit (and again at merge)│
+│     - Mark completed task items as [x] as you finish each step  │
 │     - If the whole FILE's phases passed: add "passed" suffix    │
 │                                                                 │
 │  6. Merge the branch into master with --no-ff (never ff)        │
@@ -137,10 +138,14 @@ wiring change, a bug fix). Small commits are the default, not the exception:
 | Wire it into the system | `feat(client): integrate nat_traversal into tunnel_manager` |
 | Add tests | `test(nat): add hole-punch success and timeout tests` |
 | Run tests, fix failures | `fix(nat): handle socket timeout edge case` |
-| Update docs/todos | `docs(todos): mark task 5.1 complete` |
+| Update docs/todos **before the next commit** | `docs(todos): mark task 5.1 complete` |
 
 **A branch should end up with 5–20+ commits.** If you catch yourself staging
 "all remaining changes", stop and break the work into smaller steps instead.
+
+Todo updates are never deferred to the end: mark a task `[x]` in the todo
+file **before** (or in) the commit that completes it, so every commit leaves
+the todo files in sync with the tree.
 
 ### 4.5 Commit hygiene
 
@@ -174,11 +179,12 @@ python -m pytest tests/ -v
 
 ---
 
-## 6. Updating the TODO Files Before Merge
+## 6. Updating the TODO Files Before Commit & Merge
 
 ### 6.1 Mark completed tasks
 
-Before merging, update the relevant todo file in `docs/todos/`:
+Update the relevant todo file in `docs/todos/` **before each commit** that
+completes a task (and verify the final state again before merging):
 
 ```diff
 - - [ ] 5.1 **`client/platform_detection.py`** — Platform capability detection
@@ -259,7 +265,7 @@ git push origin master            # only if a remote exists and user asked
 - [ ] Branch is up to date with latest `master`
 - [ ] All task tests pass
 - [ ] No failing tests on the branch
-- [ ] Todo file updated: completed tasks marked `[x]`
+- [ ] Todo files updated before each commit: completed tasks marked `[x]` incrementally
 - [ ] If fully passed: file renamed to `*-passed.md` and index updated
 - [ ] Commit messages follow Conventional Commits
 - [ ] No secrets, credentials, or generated files in the branch
@@ -277,7 +283,7 @@ git push origin master            # only if a remote exists and user asked
 | Merging a branch with a **single** commit | Branch = many small commits (5–20+). Split the work further. |
 | Saving up edits until the end | Commit after every logical step, not at the end. |
 | Fast-forwarding a merge | Always `git merge --no-ff`; never `--ff-only`. |
-| Forgetting to update the todo file | Update `[x]` marks **before** the merge. |
+| Forgetting to update the todo file | Update `[x]` marks **before** each commit, not only before the merge. |
 | Renaming to `passed` too early | Only rename when ALL tasks in the file are done + tests pass. |
 | Leaving temp branches behind | Delete after merge with `git branch -d`. |
 | Merging with failing tests | Run tests first; fix on the branch. |

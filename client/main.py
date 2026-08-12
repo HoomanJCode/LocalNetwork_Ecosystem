@@ -483,7 +483,10 @@ def _mac_for_ip(ip: str) -> bytes:
     administered, the second-least-significant bit of the first octet is set)
     from the IP octets.
     """
-    parts = [int(p) for p in ip.split(".")]
+    try:
+        parts = [int(p) for p in ip.split(".")]
+    except ValueError:
+        return bytes([0x02, 0x00, 0x00, 0x00, 0x00, 0x00])
     if len(parts) != 4:
         return bytes([0x02, 0x00, 0x00, 0x00, 0x00, 0x00])
     return bytes([0x02, parts[1], parts[2], parts[3], parts[0], 0x00])

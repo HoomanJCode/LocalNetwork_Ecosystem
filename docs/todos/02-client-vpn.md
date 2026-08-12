@@ -8,7 +8,7 @@
 
 ## Phase 5 — Client Core
 
-- [ ] 5.1 **`client/platform_detection.py`** — Platform capability detection
+- [x] 5.1 **`client/platform_detection.py`** — Platform capability detection
   - `PlatformCapabilities` dataclass: os_name, has_root, tun_available, raw_sockets, privileged_ports, is_termux
   - `detect_platform() -> PlatformCapabilities`:
     1. Detect OS via `platform.system()`

@@ -76,8 +76,9 @@ async def main():
         print(f"[2/4] clients registered+authed (A={id_a[:8]}… B={id_b[:8]}…)")
 
         # ── A creates a network; B joins ──────────────────────────────
-        network_id = await ch_a.create_network("smoketest", "secret", "mesh")
-        print(f"[3/4] A created network {network_id}")
+        created = await ch_a.create_network("smoketest", "secret", "mesh")
+        network_id = created["network_id"]
+        print(f"[3/4] A created network {network_id} (invite {created['invite_code']})")
 
         # B listens for PEER_ONLINE for A; A listens for PEER_ONLINE for B
         event_a = asyncio.create_task(ch_a.listen_events().__anext__())

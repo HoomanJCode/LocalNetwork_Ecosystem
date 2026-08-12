@@ -247,12 +247,16 @@ class ControlChannel:
     # ------------------------------------------------------------------
     async def create_network(
         self, name: str, password: str, topology: str = constants.DEFAULT_TOPOLOGY
-    ) -> str:
+    ) -> dict:
+        """Create a network and return ``{"network_id", "invite_code"}``."""
         reply = await self.request(
             make_message(CreateNetwork, name=name, password=password, topology=topology),
             expected=constants.MSG_NETWORK_CREATED,
         )
-        return reply.payload.get("network_id", "")
+        return {
+            "network_id": reply.payload.get("network_id", ""),
+            "invite_code": reply.payload.get("invite_code", ""),
+        }
 
     async def join_network(self, network_id: str, password: str) -> str:
         reply = await self.request(

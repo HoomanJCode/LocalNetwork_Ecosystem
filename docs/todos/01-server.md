@@ -58,7 +58,7 @@
     - On disconnect: mark client offline, notify peers
   - Graceful shutdown (SIGINT/SIGTERM)
 
-- [ ] 3.7 **Write tests:**
+- [x] 3.7 **Write tests:**
   - `tests/test_registry.py`
     - Register → get → found
     - Unregister → get → None

@@ -43,6 +43,12 @@ def create_app(
         autoescape=jinja2.select_autoescape(["html"]),
     )
 
+    # Static files — serve common/web_static design system
+    common_static = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "common", "web_static")
+    )
+    app.router.add_static("/static/", common_static)
+
     # Routes
     app.router.add_get("/", dashboard)
     app.router.add_get("/upstreams", upstreams_page)

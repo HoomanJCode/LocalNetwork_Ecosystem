@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "localnetwork-ecosystem"
+version = "0.1.0"
+description = "A Python-based virtual LAN with NAT traversal, encryption, service exposure, and a reverse proxy"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "LocalNetwork Ecosystem" }]
+dependencies = [
+    "cryptography>=42.0",
+    "bcrypt>=4.0",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "aiohttp>=3.9",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+localnetwork-server = "server.main:main"
+localnetwork-client = "client.main:client_main"
+localnetwork-cli = "client.main:cli_main"
+
+[tool.setuptools.packages.find]
+include = ["common*", "server*", "client*", "proxy*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+asyncio_mode = "auto"

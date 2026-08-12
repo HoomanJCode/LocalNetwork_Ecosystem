@@ -44,7 +44,7 @@
   - Automatic reconnection with exponential backoff (start 1s, max 60s)
   - Heartbeat coroutine (fires every 30s)
 
-- [ ] 5.4 **`client/main.py`** — CLI entry point
+- [x] 5.4 **`client/main.py`** — CLI entry point
   - `localnetwork-server` command — starts mediation server
   - `localnetwork-client` command — starts client daemon
   - `localnetwork-cli` — management CLI:

@@ -73,7 +73,7 @@
 
 ## Phase 4 — Server Relay Fallback
 
-- [ ] 4.1 **`server/relay.py`**
+- [x] 4.1 **`server/relay.py`**
   - `RelayForwarder` class:
     - In-memory mapping: `(src_client_id, dst_client_id) -> asyncio.Queue`
     - `register_relay_path(src_id, dst_id)` — allocate relay channel

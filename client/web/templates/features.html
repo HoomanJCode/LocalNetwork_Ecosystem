@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:8px;">🚀 Feature Launcher</h2>
+<p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Select a feature to configure and start it. Each feature runs independently — you can enable multiple at once.</p>
+
+<div class="feature-grid">
+    {% for fid, f in features.items() %}
+    <div class="feature-card {{ 'feature-running' if f.running else '' }}" id="feature-{{ fid }}">
+        <div class="feature-card__header" onclick="toggleFeatureConfig('{{ fid }}')">
+            <div class="feature-card__icon">{{ f.icon }}</div>
+            <div class="feature-card__info">
+                <div class="feature-card__title">{{ f.name }}</div>
+                <div class="feature-card__desc">{{ f.description }}</div>
+            </div>
+            <div class="feature-card__status">
+                <span class="feature-badge feature-badge--{{ 'running' if f.running else 'stopped' }}">
+                    <span class="dot"></span> {{ 'Running' if f.running else 'Stopped' }}
+                </span>
+            </div>
+            <div class="feature-card__chevron" id="chevron-{{ fid }}">▾</div>
+        </div>
+
+        <div class="feature-card__body" id="body-{{ fid }}" style="display:none;">
+            <!-- Requirements -->
+            {% if f.requires %}
+            <div class="feature-requires">
+                <strong>Requirements:</strong>
+                {% for req in f.requires %}
+                <span class="badge badge-warning">{{ req }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Configuration form -->
+            <div class="feature-config">
+                <h4 style="margin-bottom:12px;color:var(--text-secondary);text-transform:uppercase;font-size:12px;">Configuration</h4>
+                {% if fid == 'tun' %}
+                    <div class="form-group">
+                        <label class="form-label">Virtual IP</label>
+                        <input class="form-input" type="text" id="cfg-tun-ip" value="{{ f.config.virtual_ip }}" placeholder="25.1.0.1">
+                        <span class="form-hint">IP address in the 25.0.0.0/8 subnet</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">MTU</label>
+                        <input class="form-input" type="number" id="cfg-tun-mtu" value="{{ f.config.mtu }}" min="576" max="9000">
+                        <span class="form-hint">Maximum Transmission Unit (default: 1400)</span>
+                    </div>
+                {% elif fid == 'service_exposure' %}
+                    <div class="form-group">
+                        <label class="form-label">Service Name</label>
+                        <input class="form-input" type="text" id="cfg-svc-name" placeholder="my-web-server">
+                    </div>
+                    <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label class="form-label">Protocol</label>
+                            <select class="form-select" id="cfg-svc-proto">
+                                <option value="tcp">TCP</option>
+                                <option value="udp">UDP</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Port</label>
+                            <input class="form-input" type="number" id="cfg-svc-port" placeholder="8080" min="1" max="65535">
+                        </div>
+                    </div>
+                {% elif fid == 'nat_traversal' %}
+                    <div class="form-group">
+                        <label class="form-label">STUN Server</label>
+                        <input class="form-input" type="text" id="cfg-nat-stun" value="{{ f.config.stun_server }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Detected NAT Type</label>
+                        <div class="form-input" style="background:var(--bg-primary);cursor:default;" id="cfg-nat-type">{{ f.config.nat_type }}</div>
+                    </div>
+                {% elif fid == 'connection' %}
+                    <div class="form-group" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+                        <div>
+                            <label class="form-label">Server Host</label>
+                            <input class="form-input" type="text" id="cfg-conn-host" value="{{ f.config.server_host }}">
+                        </div>
+                        <div>
+                            <label class="form-label">Port</label>
+                            <input class="form-input" type="number" id="cfg-conn-port" value="{{ f.config.server_port }}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Heartbeat Interval (seconds)</label>
+                        <input class="form-input" type="number" id="cfg-conn-hb" value="{{ f.config.heartbeat_interval }}" min="5" max="300">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label toggle" style="display:inline-flex;">
+                            <input type="checkbox" id="cfg-conn-reconnect" {{ 'checked' if f.config.reconnect else '' }}>
+                            <span class="toggle__track"></span>
+                            Auto-reconnect
+                        </label>
+                    </div>
+                {% elif fid == 'topology' %}
+                    <div class="form-group">
+                        <label class="form-label">Topology Mode</label>
+                        <select class="form-select" id="cfg-topo-mode">
+                            <option value="mesh" {{ 'selected' if f.config.mode == 'mesh' else '' }}>Mesh (all-to-all)</option>
+                            <option value="hub_and_spoke" {{ 'selected' if f.config.mode == 'hub_and_spoke' else '' }}>Hub and Spoke</option>
+                            <option value="gateway" {{ 'selected' if f.config.mode == 'gateway' else '' }}>Gateway (bridge to LAN)</option>
+                        </select>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Action buttons -->
+            <div class="feature-actions">
+                {% if f.running %}
+                <button class="btn btn--danger" onclick="stopFeature('{{ fid }}')">
+                    ⏹ Stop
+                </button>
+                <button class="btn btn--secondary" onclick="restartFeature('{{ fid }}')">
+                    🔄 Restart
+                </button>
+                {% else %}
+                <button class="btn btn--primary btn--lg" onclick="startFeature('{{ fid }}')">
+                    ▶ Start {{ f.name }}
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Status message -->
+            <div class="feature-message" id="msg-{{ fid }}" style="display:none;"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .feature-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .feature-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: border-color 200ms ease, box-shadow 200ms ease;
+    }
+    .feature-card:hover {
+        border-color: var(--border-light);
+    }
+    .feature-card.feature-running {
+        border-left: 3px solid var(--success);
+    }
+    .feature-card__header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 24px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 100ms ease;
+    }
+    .feature-card__header:hover {
+        background: rgba(255,255,255,0.02);
+    }
+    .feature-card__icon {
+        font-size: 2rem;
+        width: 56px;
+        height: 56px;
+        display: grid;
+        place-items: center;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        flex-shrink: 0;
+    }
+    .feature-card__info {
+        flex: 1;
+        min-width: 0;
+    }
+    .feature-card__title {
+        font-size: 18px;
+        font-weight: var(--fw-semibold);
+        margin-bottom: 4px;
+    }
+    .feature-card__desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+    .feature-card__status {
+        flex-shrink: 0;
+    }
+    .feature-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: var(--fw-medium);
+        padding: 6px 14px;
+        border-radius: var(--radius-full);
+        white-space: nowrap;
+    }
+    .feature-badge .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .feature-badge--running {
+        background: rgba(34,197,94,0.12);
+        color: var(--success);
+    }
+    .feature-badge--running .dot {
+        background: var(--success);
+        animation: dot-pulse 2s ease-in-out infinite;
+    }
+    .feature-badge--stopped {
+        background: rgba(139,144,165,0.1);
+        color: var(--text-tertiary);
+    }
+    .feature-badge--stopped .dot {
+        background: var(--text-tertiary);
+    }
+    .feature-card__chevron {
+        font-size: 18px;
+        color: var(--text-tertiary);
+        transition: transform 200ms ease;
+        flex-shrink: 0;
+    }
+    .feature-card__chevron.open {
+        transform: rotate(180deg);
+    }
+    .feature-card__body {
+        padding: 0 24px 24px;
+        border-top: 1px solid var(--border);
+        animation: expand-in 200ms ease;
+    }
+    @keyframes expand-in {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: none; }
+    }
+    .feature-requires {
+        padding: 12px 16px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        margin: 20px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+    }
+    .feature-config {
+        margin: 20px 0;
+        padding: 20px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+    }
+    .feature-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .feature-message {
+        margin-top: 12px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        font-weight: var(--fw-medium);
+    }
+    .feature-message.success {
+        background: var(--success-bg);
+        color: var(--success);
+        border: 1px solid rgba(34,197,94,0.2);
+    }
+    .feature-message.error {
+        background: var(--danger-bg);
+        color: var(--danger);
+        border: 1px solid rgba(239,68,68,0.2);
+    }
+
+    @keyframes dot-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+</style>
+
+<script>
+    function toggleFeatureConfig(fid) {
+        const body = document.getElementById('body-' + fid);
+        const chevron = document.getElementById('chevron-' + fid);
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            chevron.classList.add('open');
+        } else {
+            body.style.display = 'none';
+            chevron.classList.remove('open');
+        }
+    }
+
+    function _getConfig(fid) {
+        const config = {};
+        if (fid === 'tun') {
+            config.virtual_ip = document.getElementById('cfg-tun-ip')?.value || '';
+            config.mtu = parseInt(document.getElementById('cfg-tun-mtu')?.value) || 1400;
+        } else if (fid === 'service_exposure') {
+            config.name = document.getElementById('cfg-svc-name')?.value || '';
+            config.protocol = document.getElementById('cfg-svc-proto')?.value || 'tcp';
+            config.port = parseInt(document.getElementById('cfg-svc-port')?.value) || 0;
+        } else if (fid === 'nat_traversal') {
+            config.stun_server = document.getElementById('cfg-nat-stun')?.value || '';
+        } else if (fid === 'connection') {
+            config.server_host = document.getElementById('cfg-conn-host')?.value || '';
+            config.server_port = parseInt(document.getElementById('cfg-conn-port')?.value) || 54000;
+            config.heartbeat_interval = parseInt(document.getElementById('cfg-conn-hb')?.value) || 30;
+            config.reconnect = document.getElementById('cfg-conn-reconnect')?.checked || false;
+        } else if (fid === 'topology') {
+            config.mode = document.getElementById('cfg-topo-mode')?.value || 'mesh';
+        }
+        return config;
+    }
+
+    function _showMsg(fid, text, type) {
+        const el = document.getElementById('msg-' + fid);
+        el.textContent = text;
+        el.className = 'feature-message ' + type;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+
+    async function startFeature(fid) {
+        const btn = event?.target;
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Starting…'; }
+
+        try {
+            const config = _getConfig(fid);
+            const res = await fetch('/api/features/' + fid + '/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config }),
+            });
+            const data = await res.json();
+            if (data.ok) {
+                _showMsg(fid, '✅ ' + data.message, 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                _showMsg(fid, '❌ ' + (data.error || 'Failed'), 'error');
+            }
+        } catch (err) {
+            _showMsg(fid, '❌ Network error: ' + err.message, 'error');
+        }
+        if (btn) { btn.disabled = false; }
+    }
+
+    async function stopFeature(fid) {
+        const btns = document.querySelectorAll('#feature-' + fid + ' .feature-actions button');
+        btns.forEach(b => b.disabled = true);
+
+        try {
+            const res = await fetch('/api/features/' + fid + '/stop', { method: 'POST' });
+            const data = await res.json();
+            if (data.ok) {
+                _showMsg(fid, '🛑 ' + data.message, 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                _showMsg(fid, '❌ ' + (data.error || 'Failed'), 'error');
+            }
+        } catch (err) {
+            _showMsg(fid, '❌ Network error: ' + err.message, 'error');
+        }
+        btns.forEach(b => b.disabled = false);
+    }
+
+    async function restartFeature(fid) {
+        await stopFeature(fid);
+        setTimeout(() => startFeature(fid), 500);
+    }
+</script>
+{% endblock %}

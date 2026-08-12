@@ -2,19 +2,28 @@
 {% block content %}
 <h2 style="margin-bottom:20px;">Proxy Dashboard</h2>
 <div class="stat-grid">
-    <div class="stat-card"><div class="stat-label">Active Connections</div><div class="stat-value" style="color:var(--accent);" id="stat-conns">—</div></div>
+    <div class="stat-card"><div class="stat-label">Active Connections</div><div class="stat-value" style="color:var(--accent);" id="stat-active">—</div></div>
     <div class="stat-card"><div class="stat-label">Requests Total</div><div class="stat-value" id="stat-requests">—</div></div>
-    <div class="stat-card"><div class="stat-label">Accepted Total</div><div class="stat-value" id="stat-accepted">—</div></div>
-    <div class="stat-card"><div class="stat-label">Cache Hit Rate</div><div class="stat-value" style="color:var(--success);">—</div></div>
+    <div class="stat-card"><div class="stat-label">Reading</div><div class="stat-value" style="color:var(--info);" id="stat-reading">—</div></div>
+    <div class="stat-card"><div class="stat-label">Writing</div><div class="stat-value" style="color:var(--success);" id="stat-writing">—</div></div>
+    <div class="stat-card"><div class="stat-label">Waiting</div><div class="stat-value" style="color:var(--warning);" id="stat-waiting">—</div></div>
+    <div class="stat-card"><div class="stat-label">Accepted</div><div class="stat-value" id="stat-accepted">—</div></div>
+    <div class="stat-card"><div class="stat-label">Handled</div><div class="stat-value" id="stat-handled">—</div></div>
+    <div class="stat-card"><div class="stat-label">Uptime (s)</div><div class="stat-value" id="stat-uptime">—</div></div>
 </div>
 <script>
     async function refresh() {
         try {
-            const r = await fetch('/api/dashboard');
+            const r = await fetch('/proxy-status');
             const d = await r.json();
-            document.getElementById('stat-conns').textContent = d.active_connections || 0;
-            document.getElementById('stat-requests').textContent = d.requests_total || 0;
-            document.getElementById('stat-accepted').textContent = d.accepted_total || 0;
+            document.getElementById('stat-active').textContent = d.active_connections || 0;
+            document.getElementById('stat-requests').textContent = d.total_requests || 0;
+            document.getElementById('stat-reading').textContent = d.reading || 0;
+            document.getElementById('stat-writing').textContent = d.writing || 0;
+            document.getElementById('stat-waiting').textContent = d.waiting || 0;
+            document.getElementById('stat-accepted').textContent = d.accepted_connections || 0;
+            document.getElementById('stat-handled').textContent = d.handled_connections || 0;
+            document.getElementById('stat-uptime').textContent = d.uptime_seconds || 0;
         } catch(e) {}
     }
     refresh(); setInterval(refresh, 5000);

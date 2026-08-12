@@ -8,7 +8,7 @@
 
 ## Phase 3 — Mediation Server (Core)
 
-- [ ] 3.1 **`server/config.py`**
+- [x] 3.1 **`server/config.py`**
   - `ServerConfig` dataclass: host, port, max_clients, heartbeat_timeout
   - Load from env vars / `.env` via `python-dotenv`
   - Default values

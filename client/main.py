@@ -329,12 +329,7 @@ class ClientDaemon:
                 await asyncio.sleep(0.01)
                 continue
 
-            # Extract destination IP from the raw IP packet
-            dst_ip = _extract_dst_ip_from_packet(packet)
-            if dst_ip is None:
-                continue
-
-            # ARP handling: respond to ARP requests for our IPs
+            # ARP handling: respond to ARP requests for our IPs (gateway mode)
             if _is_arp_for_us(packet, list(self._ip_to_peer.keys())):
                 reply = _build_arp_reply_for_tun(packet, self._ip_to_peer)
                 if reply:
@@ -342,6 +337,11 @@ class ClientDaemon:
                         self.tun.write(reply)
                     except OSError:
                         pass
+                continue
+
+            # Extract destination IP from the raw IP packet
+            dst_ip = _extract_dst_ip_from_packet(packet)
+            if dst_ip is None:
                 continue
 
             # Route to the peer that owns this IP
@@ -433,22 +433,118 @@ def _extract_src_ip_from_packet(packet: bytes) -> Optional[str]:
         return None
 
 
-def _is_arp_for_us(packet: bytes, our_ips: list) -> bool:
-    """Check if a packet is an ARP request targeting one of our virtual IPs.
+def _parse_arp(packet: bytes) -> Optional[tuple]:
+    """Parse an ARP packet, raw (28 bytes) or Ethernet-framed.
 
-    ARP packets on TUN arrive as pure ARP (no Ethernet header on Linux TUN
-    with IFF_NO_PI). We check for ARP (EtherType 0x0806 in the IP header…
-    actually TUN only gives us IP, so we can't see ARP natively).
-
-    For gateway mode, ARP proxying uses raw sockets. This helper is a stub
-    for TUN mode where the kernel handles ARP automatically.
+    Returns:
+        ``(opcode, sender_mac, sender_ip, target_mac, target_ip)`` where MACs
+        are 6-byte and IPs are 4-byte raw values, or ``None`` if the packet is
+        not a valid IPv4-over-Ethernet ARP frame.
     """
-    return False
+    if not packet:
+        return None
+
+    # Ethernet-framed ARP (EtherType 0x0806) — e.g. TAP / raw-socket captures.
+    if len(packet) >= 14 and packet[12:14] == b"\x08\x06":
+        arp = packet[14:]
+    # Raw ARP (no Ethernet header) — some TUN configurations.
+    elif (
+        len(packet) >= 28
+        and packet[0:2] == b"\x00\x01"
+        and packet[2:4] == b"\x08\x00"
+    ):
+        arp = packet
+    else:
+        return None
+
+    if len(arp) < 28:
+        return None
+
+    htype = int.from_bytes(arp[0:2], "big")
+    ptype = int.from_bytes(arp[2:4], "big")
+    hlen = arp[4]
+    plen = arp[5]
+    opcode = int.from_bytes(arp[6:8], "big")
+    if htype != 1 or ptype != 0x0800 or hlen != 6 or plen != 4:
+        return None
+
+    sha = arp[8:14]   # sender hardware (MAC)
+    spa = arp[14:18]  # sender protocol (IPv4)
+    tha = arp[18:24]  # target hardware (MAC)
+    tpa = arp[24:28]  # target protocol (IPv4)
+    return opcode, sha, spa, tha, tpa
+
+
+def _mac_for_ip(ip: str) -> bytes:
+    """Derive a stable locally-administered MAC from a virtual IP.
+
+    TUN devices have no hardware address, but gateway ARP proxying needs a
+    source MAC for replies. We derive a deterministic unicast MAC (locally
+    administered, the second-least-significant bit of the first octet is set)
+    from the IP octets.
+    """
+    try:
+        parts = [int(p) for p in ip.split(".")]
+    except ValueError:
+        return bytes([0x02, 0x00, 0x00, 0x00, 0x00, 0x00])
+    if len(parts) != 4:
+        return bytes([0x02, 0x00, 0x00, 0x00, 0x00, 0x00])
+    return bytes([0x02, parts[1], parts[2], parts[3], parts[0], 0x00])
+
+
+def _is_arp_for_us(packet: bytes, our_ips: list) -> bool:
+    """Return True if ``packet`` is an ARP request for one of our virtual IPs.
+
+    Handles both raw and Ethernet-framed ARP. On a plain TUN device the kernel
+    answers ARP itself, so non-ARP (IP) packets simply return False; this
+    helper exists for gateway-mode ARP proxying.
+    """
+    parsed = _parse_arp(packet)
+    if parsed is None:
+        return False
+    opcode, _sha, _spa, _tha, tpa = parsed
+    if opcode != 1:  # ARP request only
+        return False
+    import socket as _socket
+
+    try:
+        target_ip = _socket.inet_ntoa(tpa)
+    except OSError:
+        return False
+    return target_ip in our_ips
 
 
 def _build_arp_reply_for_tun(packet: bytes, ip_to_peer: dict) -> Optional[bytes]:
-    """Build an ARP reply (stub — kernel handles ARP on TUN)."""
-    return None
+    """Build an ARP reply for a request targeting one of our virtual IPs.
+
+    Returns:
+        A raw 28-byte ARP reply (no Ethernet header, suitable for TUN writes),
+        or ``None`` if the packet is not an ARP request for one of our IPs.
+    """
+    parsed = _parse_arp(packet)
+    if parsed is None:
+        return None
+    opcode, sha, spa, _tha, tpa = parsed
+    if opcode != 1:
+        return None
+
+    import socket as _socket
+
+    try:
+        target_ip = _socket.inet_ntoa(tpa)
+    except OSError:
+        return None
+    if target_ip not in ip_to_peer:
+        return None
+
+    our_mac = _mac_for_ip(target_ip)
+    # htype=1, ptype=0x0800, hlen=6, plen=4, opcode=2 (reply)
+    return struct.pack(
+        "!HHBBH6s4s6s4s",
+        1, 0x0800, 6, 4, 2,
+        our_mac, tpa,  # sha = our MAC, spa = the requested (our) IP
+        sha, spa,      # tha = requester MAC, tpa = requester IP
+    )
 
 
 def _daemonize() -> None:

@@ -8,7 +8,7 @@
 
 ## Phase 12 — Integration & End-to-End Testing
 
-- [ ] 12.1 **`tests/test_integration.py`**
+- [x] 12.1 **`tests/test_integration.py`**
   - **Setup:** Start a mediation server on localhost, spawn 3 client instances
     (each in its own asyncio task with separate identity and ports).
   - **Test: Full registration flow**
@@ -27,7 +27,7 @@
     - Simulate punch failure → data flows through relay
     - Verify encryption end-to-end (server can't read data)
 
-- [ ] 12.2 **`tests/test_e2e.py`**
+- [x] 12.2 **`tests/test_e2e.py`**
   - Requires root/admin for TUN setup (skip on CI without `--e2e` flag)
   - **Test: Ping between two virtual clients**
     1. Start mediation server
@@ -43,7 +43,7 @@
   - **Test: Mesh broadcast**
     - 3 clients, A sends broadcast frame, B and C both receive
 
-- [ ] 12.3 **Performance benchmarks:**
+- [x] 12.3 **Performance benchmarks:**
   - Measure latency: P2P vs relay vs direct LAN
   - Measure throughput: iperf3 over the VPN tunnel
   - Measure tunnel setup time (from PEER_ONLINE to CONNECTED)
@@ -52,24 +52,24 @@
 
 ## Phase 13 — Hardening & Edge Cases
 
-- [ ] 13.1 **Error handling**
+- [x] 13.1 **Error handling**
   - Server crash → clients reconnect and re-establish tunnels
   - Peer crash → tunnel timeout, clean up, notify server
   - Partial messages (TCP split) → buffer and reassemble
   - Invalid messages → log warning, don't crash
 
-- [ ] 13.2 **Security hardening**
+- [x] 13.2 **Security hardening**
   - Rate limiting on auth attempts (prevent brute-force)
   - Max message size limit (prevent DoS)
   - Replay protection window (track recent sequence numbers, reject old)
   - Input validation on all message fields
 
-- [ ] 13.3 **Concurrency & resource limits**
+- [x] 13.3 **Concurrency & resource limits**
   - Max simultaneous tunnels per client
   - Socket buffer tuning
   - Memory limits on relay queues
 
-- [ ] 13.4 **Graceful degradation**
+- [x] 13.4 **Graceful degradation**
   - If TUN interface can't be created → warn but still enable relay-only mode
   - If ECDH fails → fall back to RSA key exchange
   - If relay queue is full → backpressure to sender

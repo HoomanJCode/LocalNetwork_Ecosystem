@@ -54,7 +54,7 @@
 
 ## Phase 2 — Cryptography Foundation
 
-- [ ] 2.1 **`client/identity.py`**
+- [x] 2.1 **`client/identity.py`**
   - `generate_identity() -> tuple[RSAPrivateKey, RSAPublicKey]` — RSA-2048
   - `save_identity(private_key, public_key, path="~/.localnetwork/")` — PEM format, `0600` perms
   - `load_identity(path="~/.localnetwork/") -> tuple[RSAPrivateKey, RSAPublicKey]`

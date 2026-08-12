@@ -21,7 +21,7 @@
 
 ## Phase 1 — Common: Protocol Constants, Messages & Frame Definitions
 
-- [ ] 1.1 **`common/constants.py`**
+- [x] 1.1 **`common/constants.py`**
   - `SERVER_DEFAULT_HOST = "0.0.0.0"`
   - `SERVER_DEFAULT_PORT = 54000`
   - `HEARTBEAT_INTERVAL = 30` (seconds)

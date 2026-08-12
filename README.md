@@ -5,7 +5,8 @@ A Python-based networking toolkit with three core features:
 - **Reverse Proxy** — high-performance HTTP/TCP load balancer and traffic manager
 - **Web Admin Panels** — browser-based dashboards for server, client, and proxy
 
-> **Status:** Pre-implementation — [DESIGN.md](DESIGN.md) and [TODO.md](TODO.md) are complete.
+> **Status:** In development — [DESIGN.md](DESIGN.md) defines the architecture and
+> [TODO.md](TODO.md) tracks the phased implementation plan.
 
 ---
 
@@ -316,6 +317,19 @@ Shows whether your connection is good for direct P2P or will use relay.
 ## License
 
 MIT
+
+---
+
+## Project Layout
+
+```
+server/     Mediation server (registry, networks, relay, web admin)
+client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN)
+proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, SSL)
+common/     Shared protocol constants, messages, frames, and web UI assets
+common/web_static/  Shared admin-panel design system (CSS/JS)
+tests/      Unit & integration tests (pytest)
+```
 
 ---
 

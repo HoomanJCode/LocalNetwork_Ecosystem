@@ -7,6 +7,7 @@ A Python-based networking toolkit with three core features:
 
 > **Status:** In development — [DESIGN.md](DESIGN.md) defines the architecture and
 > [TODO.md](TODO.md) tracks the phased implementation plan.
+> **Quick start:** see [USAGE.md](USAGE.md) for the one-page command reference.
 
 ---
 
@@ -84,9 +85,158 @@ pip install localnetwork-ecosystem
 git clone https://github.com/your-org/LocalNetwork_Ecosystem.git
 cd LocalNetwork_Ecosystem
 pip install -r requirements.txt
+pip install -e .      # makes localnetwork-* commands available
 ```
 
-## Getting Started
+After installation, three commands are available:
+
+| Command | Purpose |
+|---------|---------|
+| `localnetwork-server` | Runs the mediation server (registry, auth, relay) |
+| `localnetwork-client` | Runs the VPN client daemon (connect + keepalive) |
+| `localnetwork-cli` | Management CLI for creating/joining/listing networks |
+
+## Quick Start (2 machines, 5 minutes)
+
+### 1. Start the mediation server (machine 1)
+
+```bash
+localnetwork-server --host 0.0.0.0 --port 54000 --log-level INFO
+```
+
+You should see:
+```
+mediation server listening on 0.0.0.0:54000 (max_clients=256)
+```
+
+> **Firewall:** open TCP port `54000` so clients can reach the server.
+
+### 2. Connect client A (machine 1, same terminal or another)
+
+```bash
+# Terminal 2 — connect to the server and stay online
+localnetwork-client --server localhost:54000 --log-level INFO
+```
+
+### 3. Connect client B (machine 2)
+
+```bash
+localnetwork-client --server <server-ip>:54000 --log-level INFO
+```
+
+### 4. Create a network (from client A, in a 3rd terminal)
+
+```bash
+localnetwork-cli --host localhost --port 54000 create mynet --password secret
+# → Created network 'mynet' with id 7f9c2b14-...
+```
+
+### 5. Join the network (from client B)
+
+```bash
+localnetwork-cli --host <server-ip> --port 54000 join 7f9c2b14-... --password secret
+# → Joined network 7f9c2b14-...
+```
+
+Both daemons now log `peer online` notifications — the two clients can
+see each other through the mediation server. (Direct P2P tunnels between
+peers arrive with the tunnel manager; see [Roadmap](#roadmap).)
+
+### Other useful commands
+
+```bash
+localnetwork-cli list                 # networks you belong to
+localnetwork-cli status               # connection status + platform capabilities
+localnetwork-cli info <network-id>    # network details (owner, topology, members)
+localnetwork-cli leave <network-id>   # leave a network
+localnetwork-client --detect-platform # print platform capabilities and exit
+localnetwork-server --version
+```
+
+---
+
+## Development
+
+### Dev runner script
+
+The quickest way to set up a development environment and try the whole stack:
+
+**Linux / macOS:**
+
+```bash
+./scripts/run_dev.sh setup   # venv + deps + editable install (first time)
+./scripts/run_dev.sh test    # run the full test suite
+./scripts/run_dev.sh server  # start the mediation server
+./scripts/run_dev.sh client  # start a client daemon
+./scripts/run_dev.sh demo    # launch server + 2 clients in separate terminals
+./scripts/run_dev.sh cli -- create mynet --password secret
+./scripts/run_dev.sh clean   # remove venv and caches
+```
+
+**Windows (PowerShell or cmd):**
+
+```bat
+scripts\run_dev.bat setup
+scripts\run_dev.bat test
+scripts\run_dev.bat server
+scripts\run_dev.bat client
+scripts\run_dev.bat demo
+scripts\run_dev.bat cli -- create mynet --password secret
+scripts\run_dev.bat clean
+```
+
+Run `./scripts/run_dev.sh help` (or `scripts\run_dev.bat help`) for the full
+command reference inside the script.
+
+### Running tests directly
+
+```bash
+# Unit & integration tests (no root needed)
+python -m pytest tests/ -v
+
+# A specific test file
+python -m pytest tests/test_encryption.py -v
+
+# A single test
+python -m pytest tests/test_nat_traversal.py::TestPunchPeer -v
+```
+
+See [DESIGN.md](DESIGN.md) for architecture and protocol details, [TODO.md](TODO.md)
+for the phased implementation plan, and [AI_COMMIT_RULES.md](AI_COMMIT_RULES.md)
+for the git workflow AI agents must follow.
+
+---
+
+## Roadmap
+
+The project is developed in phases ([TODO.md](TODO.md)). Everything below marked
+**planned** is specified in [DESIGN.md](DESIGN.md) but not implemented yet.
+
+### Implemented
+
+- ✅ Mediation server: register → auth → create/join/leave/list networks
+- ✅ Relay fallback (server forwards encrypted frames when P2P fails)
+- ✅ Client identity (RSA-2048), control channel, heartbeats, reconnection
+- ✅ UDP hole-punching engine + STUN NAT classification
+- ✅ P2P tunnel manager + keepalive manager
+- ✅ Platform capability detection
+- ✅ Full test suite (224+ tests)
+
+### Planned
+
+- ⏳ TUN virtual interface (full IP-level LAN emulation — ping/SSH over the VPN)
+- ⏳ Network topologies (hub-and-spoke, gateway)
+- ⏳ Service exposure / port forwarding (share one port, no root needed)
+- ⏳ Setup wizard & friendly CLI UX (`localnetwork` launcher, `--daemon`, `diagnose`)
+- ⏳ Web admin panels (server + client dashboards)
+- ⏳ Reverse proxy / load balancer
+
+---
+
+## Getting Started (planned UX)
+
+> The friendly wizard described below is **planned** (Phase 10). Until then use
+> the [Quick Start](#quick-start-2-machines-5-minutes) section above.
 
 No technical knowledge needed. The setup wizard will guide you through everything.
 
@@ -165,11 +315,10 @@ localnetwork-server [OPTIONS]
 Options:
   --host HOST         Bind address (default: 0.0.0.0)
   --port PORT         TCP port (default: 54000)
-  --web-port PORT     Admin panel HTTP port (default: 54001. Set 0 to disable)
+  --web-port PORT     Admin panel HTTP port (flag exists; panel itself is ⏳ planned)
   --max-clients N     Maximum concurrent clients (default: 256)
-  --admin-user USER   Admin panel username (env: LNSERVER_ADMIN_USER)
-  --admin-pass PASS   Admin panel password (env: LNSERVER_ADMIN_PASS)
   --log-level LEVEL   DEBUG | INFO | WARNING | ERROR (default: INFO)
+  --version           Show version
 ```
 
 ### Virtual LAN Client
@@ -181,12 +330,9 @@ Options:
   --server HOST:PORT     Mediation server address (default: localhost:54000)
   --identity-dir PATH    Key storage directory (default: ~/.localnetwork/)
   --virtual-ip IP        Request a specific virtual IP
-  --daemon               Run in background
-  --pid-file PATH        PID file for daemon mode
-  --log-file PATH        Log output file
-  --web-port PORT        Admin panel HTTP port (default: 54002. Set 0 to disable)
-  --verbose, -v          Verbose output
-  --quiet, -q            Minimal output
+  --web-port PORT        Admin panel HTTP port (flag exists; panel itself is ⏳ planned)
+  --log-level LEVEL      DEBUG | INFO | WARNING | ERROR
+  --detect-platform      Print platform capabilities and exit
   --version              Show version
 ```
 
@@ -195,66 +341,54 @@ Options:
 ```
 localnetwork-cli <command> [ARGS]
 
-Commands:
-  create NAME [--password PASS] [--topology mesh|hub|gateway]
-      Create a new virtual network
+Global options:
+  --host HOST        Server host (default: localhost)
+  --port PORT        Server port (default: 54000)
 
-  join NETWORK [--password PASS]
+Commands (✅ implemented, ⏳ planned):
+  ✅ create NAME [--password PASS] [--topology mesh|hub|gateway]
+      Create a new virtual network; prints the network id to share
+
+  ✅ join NETWORK [--password PASS]
       Join an existing network
 
-  leave NETWORK
+  ✅ leave NETWORK
       Leave a network
 
-  list
-      List networks you belong to
+  ✅ list
+      List networks you belong to (name, id, topology, members)
 
-  status
-      Show connection status, virtual IP, peer list, tunnel states
+  ✅ status
+      Show connection status and platform capabilities
 
-  info NETWORK
+  ✅ info NETWORK
       Show details about a network (members, topology, owner)
 
-  peer-endpoints PEER_ID
+  ✅ version
+      Show version information
+
+  ⏳ peer-endpoints PEER_ID
       Show the public endpoints of a peer (for debugging)
 
-  expose NAME --protocol tcp|udp --port PORT [--host HOST]
-      Expose a local service to the network
-
-  unexpose SERVICE_ID
-      Stop exposing a service
-
-  services
-      List services available on your networks
-
-  map SERVICE_ID [--port PORT] [--strategy same|auto|manual]
-      Map a remote service to a local port
-
-  unmap SERVICE_ID
-      Stop mapping a remote service
-
-  version
-      Show version information
+  ⏳ expose / unexpose / services / map / unmap
+      Service exposure (port forwarding) — Phase 14
 ```
 
-### Reverse Proxy
+### Reverse Proxy ⏳
 
 ```
-localnetwork-proxy [OPTIONS]
+localnetwork-proxy [OPTIONS]   # planned — Phase 17+
 
 Options:
   --config PATH      YAML configuration file (default: proxy-config.yml)
   --workers N        Number of worker processes (default: auto = CPU count)
   --validate-config  Parse and validate the config file, then exit
   --version          Show version
-
-Signals:
-  SIGHUP             Graceful reload — re-read config, restart workers
-  SIGINT / SIGTERM   Graceful shutdown — drain connections, stop workers
 ```
 
 ### Environment variables
 
-All options can also be set via environment variables or a `.env` file:
+Client and server options can also be set via environment variables or a `.env` file:
 
 | Variable                  | Equivalent            |
 |---------------------------|-----------------------|
@@ -263,8 +397,6 @@ All options can also be set via environment variables or a `.env` file:
 | `LNCLIENT_SERVER`         | `--server`            |
 | `LNCLIENT_IDENTITY_DIR`   | `--identity-dir`      |
 | `LNCLIENT_LOG_LEVEL`      | `--log-level`         |
-| `LNPROXY_CONFIG`          | `--config`            |
-| `LNPROXY_WORKERS`         | `--workers`           |
 
 ---
 
@@ -286,31 +418,22 @@ All options can also be set via environment variables or a `.env` file:
 
 | Symptom                                | Likely cause & fix                                           |
 |----------------------------------------|--------------------------------------------------------------|
-| `Permission denied` on `/dev/net/tun`  | Run the client with `sudo`, or add your user to the right group |
+| `localnetwork-*: command not found`   | Package not installed with entry points. Run `pip install -e .` |
+| `ConnectionRefusedError` on client     | Server not running, or firewall blocking TCP 54000            |
+| `Identity error` on CLI commands       | No identity yet — run `localnetwork-client` once to generate one |
+| `WRONG_PASSWORD` on join               | Passwords are case-sensitive. Ask the network owner to confirm. |
+| `NO_SHARED_NETWORK` on relay           | Both clients must join the same network before connecting     |
 | Tunnels stuck in `CONNECTING`          | Both peers behind symmetric NAT — relay fallback should kick in. Check server logs. |
-| Can't ping virtual IP                  | TUN interface not up. Check `localnetwork-cli status`. Run `ip addr show` to verify. |
-| Server unreachable                     | Firewall blocking TCP port 54000. Open it on the server machine. |
-| "Wrong password" on join               | Passwords are case-sensitive. Ask the network owner to confirm. |
-| High latency / low throughput          | You're on relay fallback, not direct P2P. Check NAT types with `--diagnose-nat`. |
+| High latency / low throughput          | You're on relay fallback, not direct P2P                      |
 
-### Proxy-specific
+### Planned features (not yet available)
 
-| Symptom                                | Likely cause & fix                                           |
-|----------------------------------------|--------------------------------------------------------------|
-| `bind: address already in use`         | Another process is using the listen port. Change the port or kill the other process. |
-| Upstream server stays `down`           | Backend is crashing on every request. Check backend logs.     |
-| 502 Bad Gateway                        | Proxy can't reach any upstream server. Verify backends are running. |
-| 504 Gateway Timeout                    | Backend taking too long to respond. Increase `proxy_read_timeout` in config. |
-| Cache not working                      | Backend sending `Cache-Control: no-cache` or `private`. Check response headers. |
-| SSL handshake fails                    | Certificate or key file path wrong, or key doesn't match cert. |
-
-### Diagnose your connection
-
-```bash
-localnetwork diagnose
-```
-
-Shows whether your connection is good for direct P2P or will use relay.
+| Symptom                                | Status                                             |
+|----------------------------------------|----------------------------------------------------|
+| `Permission denied` on `/dev/net/tun`  | TUN interface is planned (Phase 8) — not implemented |
+| Can't ping virtual IP                  | Requires TUN mode (Phase 8)                        |
+| `localnetwork diagnose`                | Planned (Phase 10)                                 |
+| Proxy errors (502/504, cache, SSL)     | Reverse proxy is planned (Phase 17+)               |
 
 ---
 
@@ -328,26 +451,6 @@ client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN)
 proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, SSL)
 common/     Shared protocol constants, messages, frames, and web UI assets
 common/web_static/  Shared admin-panel design system (CSS/JS)
+scripts/    Development runner scripts (run_dev.sh / run_dev.bat)
 tests/      Unit & integration tests (pytest)
-```
-
----
-
-## Development
-
-See [DESIGN.md](DESIGN.md) for architecture and protocol details, [TODO.md](TODO.md)
-for the phased implementation plan, and [AI_COMMIT_RULES.md](AI_COMMIT_RULES.md)
-for the git workflow AI agents must follow.
-
-### Running tests
-
-```bash
-# Unit & integration tests (no root needed)
-python -m pytest tests/ -v
-
-# End-to-end tests (requires root for TUN)
-sudo python -m pytest tests/ -v --e2e
-
-# Specific test file
-python -m pytest tests/test_encryption.py -v
 ```

@@ -55,8 +55,9 @@ class RoundRobinBalancer(LoadBalancer):
             for _ in range(weight):
                 weighted.append(server)
 
+        result = weighted[self._index]
         self._index = (self._index + 1) % len(weighted)
-        return weighted[self._index]
+        return result
 
 
 class LeastConnBalancer(LoadBalancer):

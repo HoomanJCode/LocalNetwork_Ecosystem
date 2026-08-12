@@ -29,7 +29,7 @@
     - `heartbeat(client_id)` — bump timestamp
     - `prune_stale(timeout)` — mark timed-out clients offline
 
-- [ ] 3.4 **`server/network_manager.py`**
+- [x] 3.4 **`server/network_manager.py`**
   - `NetworkRecord` dataclass: network_id, name, password_hash, owner_id, topology, members, hub_id, gateway_id
   - `NetworkManager` class:
     - `create(network_id, name, password, owner_id, topology)`

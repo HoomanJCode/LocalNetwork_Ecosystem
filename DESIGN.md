@@ -105,6 +105,7 @@ Frame Types:
 - `0x02` — PUNCH: UDP hole-punching probe
 - `0x03` — KEEPALIVE: Connection keep-alive
 - `0x04` — CLOSE: Graceful tunnel close
+- `0x05` — FORWARDED_STREAM: TCP stream data for a forwarded service (carries service_id + stream_id in associated data)
 
 ### 2.3 MSS Clamping
 
@@ -239,7 +240,7 @@ class PeerTunnel:
     rx_seq: int           # Last received sequence number
 ```
 
-### 4.8 Service Exposure (Port Forwarding)
+### 4.7 Service Exposure (Port Forwarding)
 
 A lightweight alternative to the full TUN-based virtual LAN. Clients can expose
 specific local TCP/UDP services to other network members without any system
@@ -401,7 +402,7 @@ Service exposure can be used **alongside** or **instead of** TUN mode on the sam
 
 ---
 
-### 4.9 Network Topologies
+### 4.8 Network Topologies
 
 **Mesh (default):**
 - Every peer opens a direct tunnel to every other peer in the network.
@@ -1201,6 +1202,7 @@ ACCEPT → READ_REQUEST_HEADERS → (optionally: READ_BODY)
 cryptography>=41.0        # RSA, AES-GCM, ECDH, HKDF
 bcrypt>=4.0              # Password hashing
 python-dotenv>=1.0       # Config from .env
+pyyaml>=6.0              # YAML config parsing (proxy, settings)
 aiohttp>=3.9             # Async HTTP server (web admin panels)
 jinja2>=3.1              # HTML templates (web admin panels)
 ```

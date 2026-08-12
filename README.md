@@ -76,6 +76,10 @@ root/admin because it creates a virtual network interface.
 ## Installation
 
 ```bash
+# Option 1: From PyPI (recommended)
+pip install localnetwork-ecosystem
+
+# Option 2: From source
 git clone https://github.com/your-org/LocalNetwork_Ecosystem.git
 cd LocalNetwork_Ecosystem
 pip install -r requirements.txt
@@ -309,6 +313,12 @@ Shows whether your connection is good for direct P2P or will use relay.
 
 ---
 
+## License
+
+MIT
+
+---
+
 ## Development
 
 See [DESIGN.md](DESIGN.md) for architecture and protocol details, and [TODO.md](TODO.md)
@@ -326,9 +336,3 @@ sudo python -m pytest tests/ -v --e2e
 # Specific test file
 python -m pytest tests/test_encryption.py -v
 ```
-
----
-
-## License
-
-MIT

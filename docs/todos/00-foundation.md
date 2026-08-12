@@ -8,7 +8,7 @@
 
 ## Phase 0 — Project Skeleton & Tooling
 
-- [ ] 0.1 Create directory structure (`server/`, `client/`, `proxy/`, `common/`, `common/web_static/`, `tests/`)
+- [x] 0.1 Create directory structure (`server/`, `client/`, `proxy/`, `common/`, `common/web_static/`, `tests/`)
 - [ ] 0.2 Create `requirements.txt` with `cryptography`, `bcrypt`, `python-dotenv`, `pyyaml`, `aiohttp`, `jinja2`
 - [ ] 0.3 Create `README.md` with project overview, quickstart, and CLI usage
 - [ ] 0.4 Create `common/__init__.py`, `server/__init__.py`, `client/__init__.py`, `proxy/__init__.py`, `tests/__init__.py`

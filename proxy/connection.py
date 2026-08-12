@@ -20,6 +20,8 @@ from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
+from proxy.status import STATE_READING, STATE_WAITING, STATE_WRITING
+
 log = logging.getLogger("localnetwork.proxy.connection")
 
 # Maximum sizes
@@ -35,6 +37,18 @@ class ConnState(Enum):
     FORWARD = auto()
     RESPOND = auto()
     CLOSED = auto()
+
+
+# Maps a connection state to the nginx-style category reported to the status
+# collector (reading / writing / waiting).
+_STATE_CATEGORY = {
+    ConnState.READ_REQUEST: STATE_READING,
+    ConnState.MATCH_ROUTE: STATE_WAITING,
+    ConnState.CONNECT_UPSTREAM: STATE_WAITING,
+    ConnState.FORWARD: STATE_WAITING,
+    ConnState.RESPOND: STATE_WRITING,
+    ConnState.CLOSED: None,
+}
 
 
 @dataclass
@@ -207,13 +221,22 @@ class Connection:
         self.compressor = compressor
         self.access_logger = access_logger
         self.status_collector = status_collector
-        self.state = ConnState.READ_REQUEST
+        self.state: Optional[ConnState] = None
         self._parser = HttpParser()
         self._request_count = 0
         self._closed = False
 
         peername = writer.get_extra_info("peername")
         self.client_ip = peername[0] if peername else "127.0.0.1"
+
+    def _set_state(self, new_state: ConnState) -> None:
+        """Transition the connection state and update status counters."""
+        if self.status_collector is not None:
+            old = _STATE_CATEGORY.get(self.state)
+            new = _STATE_CATEGORY.get(new_state)
+            if old != new:
+                self.status_collector.transition_state(old, new)
+        self.state = new_state
 
     async def handle(self) -> None:
         """Main connection loop."""
@@ -222,12 +245,12 @@ class Connection:
 
         try:
             while not self._closed:
-                self.state = ConnState.READ_REQUEST
+                self._set_state(ConnState.READ_REQUEST)
                 request = await self._read_request()
                 if request is None:
                     break  # EOF
 
-                self.state = ConnState.MATCH_ROUTE
+                self._set_state(ConnState.MATCH_ROUTE)
                 location = self._match_route(request.path)
                 if location is None:
                     await self._send_error(404, "Not Found")
@@ -239,7 +262,7 @@ class Connection:
                 root = getattr(location, "root", "")
                 if root and request.method == "GET":
                     response = await self._serve_static_file(request.path, root, location)
-                    self.state = ConnState.RESPOND
+                    self._set_state(ConnState.RESPOND)
                     await self._send_response(response)
                     if self.access_logger:
                         await self.access_logger.log(
@@ -258,7 +281,7 @@ class Connection:
 
                 ws_enabled = getattr(location, "ws_enabled", True)
                 if ws_enabled and is_websocket_upgrade(request.headers):
-                    self.state = ConnState.CONNECT_UPSTREAM
+                    self._set_state(ConnState.CONNECT_UPSTREAM)
                     upstream_data = await self._connect_upstream(request, location)
                     if upstream_data is None:
                         if not request.is_keepalive:
@@ -277,17 +300,17 @@ class Connection:
                         pass
                     break  # WebSocket connections are not keep-alive
 
-                self.state = ConnState.CONNECT_UPSTREAM
+                self._set_state(ConnState.CONNECT_UPSTREAM)
                 upstream_data = await self._connect_upstream(request, location)
                 if upstream_data is None:
                     if not request.is_keepalive:
                         break
                     continue
 
-                self.state = ConnState.FORWARD
+                self._set_state(ConnState.FORWARD)
                 response = await self._forward_request(request, upstream_data, location)
 
-                self.state = ConnState.RESPOND
+                self._set_state(ConnState.RESPOND)
                 await self._send_response(response)
 
                 if self.access_logger:
@@ -576,7 +599,7 @@ class Connection:
     async def _close(self) -> None:
         """Close the client connection."""
         self._closed = True
-        self.state = ConnState.CLOSED
+        self._set_state(ConnState.CLOSED)
         if self.status_collector:
             self.status_collector.decrement_active()
         try:

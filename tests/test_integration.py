@@ -33,9 +33,9 @@ class TestIntegration:
 
         try:
             # Verify server is running
-            assert server.running
+            assert server.started_at is not None
         finally:
-            server.stop()
+            await server.shutdown()
             server_task.cancel()
             try:
                 await server_task
@@ -113,13 +113,12 @@ class TestRelayFallback:
         """Request relay when direct P2P fails."""
         from server.relay import RelayForwarder
 
-        relay = RelayForwarder()
-        path_id = relay.create_path("client-a", "client-b")
-        assert path_id
-        assert relay.is_active(path_id)
+        relay = RelayForwarder(None)  # path management needs no live server
+        assert relay.register_relay_path("client-a", "client-b") is True
+        assert relay.has_path("client-a", "client-b")
 
-        relay.close_path(path_id)
-        assert not relay.is_active(path_id)
+        relay.drop_client("client-a")
+        assert not relay.has_path("client-a", "client-b")
 
 
 class TestErrorHandling:

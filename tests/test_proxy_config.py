@@ -188,6 +188,19 @@ class TestLoadBalancer:
         hosts = [s.host for s in results]
         assert hosts[:3] == ["a", "b", "c"]
 
+    def test_weighted_round_robin(self):
+        from proxy.load_balancer import RoundRobinBalancer, UpstreamServer
+
+        lb = RoundRobinBalancer()
+        servers = [
+            UpstreamServer(host="a", port=80, weight=3),
+            UpstreamServer(host="b", port=80, weight=1),
+        ]
+        results = [lb.select(servers) for _ in range(8)]
+        hosts = [s.host for s in results]
+        assert hosts.count("a") == 6
+        assert hosts.count("b") == 2
+
     def test_least_conn(self):
         from proxy.load_balancer import LeastConnBalancer, UpstreamServer
 

@@ -18,7 +18,7 @@
   - `build_message(msg: Message) -> bytes` — wraps `common.messages.serialize`
   - Validation helpers: `validate_register`, `validate_create_network`, etc.
 
-- [ ] 3.3 **`server/registry.py`**
+- [x] 3.3 **`server/registry.py`**
   - `ClientRecord` dataclass: client_id, public_key_pem, public_endpoint, last_heartbeat, online, networks
   - `ClientRegistry` class:
     - `register(client_id, public_key_pem)`

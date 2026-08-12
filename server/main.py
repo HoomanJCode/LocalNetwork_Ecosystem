@@ -104,8 +104,17 @@ class MediationServer:
         self._prune_task = asyncio.create_task(self._prune_loop())
         self._expiry_task = asyncio.create_task(self._auth_expiry_loop())
 
-        async with self._server:
-            await self._server.serve_forever()
+        # Start web admin panel if configured
+        web_task = None
+        if self.config.web_port and self.config.web_port > 0:
+            web_task = asyncio.create_task(self._start_web_panel())
+
+        try:
+            async with self._server:
+                await self._server.serve_forever()
+        finally:
+            if web_task:
+                web_task.cancel()
 
     async def shutdown(self) -> None:
         """Gracefully stop accepting, close all client connections."""
@@ -545,6 +554,31 @@ class MediationServer:
     async def _send(writer: asyncio.StreamWriter, msg: Message) -> None:
         writer.write(proto.build_message(msg))
         await writer.drain()
+
+    async def _start_web_panel(self) -> None:
+        """Start the admin web panel alongside the server."""
+        try:
+            from server.web.app import create_app
+            from aiohttp import web
+
+            app = create_app(
+                client_registry=self.registry,
+                network_manager=self.networks,
+                relay_forwarder=self.relay,
+            )
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, "0.0.0.0", self.config.web_port)
+            await site.start()
+            log.info("web admin panel listening on 0.0.0.0:%s", self.config.web_port)
+
+            # Keep alive until cancelled
+            while True:
+                await asyncio.sleep(3600)
+        except ImportError:
+            log.debug("web panel skipped: aiohttp not installed")
+        except Exception as exc:
+            log.warning("web panel failed to start: %r", exc)
 
     @staticmethod
     async def _send_error(

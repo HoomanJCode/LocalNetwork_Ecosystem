@@ -1,0 +1,27 @@
+# Example proxy configuration for docker-compose demo
+# Routes requests to the upstream nginx service
+
+listen: 80
+
+access_log: /var/log/localnetwork-proxy/access.log
+
+compression:
+  enabled: true
+  min_length: 1024
+
+health_check:
+  fail_timeout: 10
+  max_fails: 3
+
+ssl:
+  cert_dir: /etc/localnetwork/ssl
+
+locations:
+  - path: /
+    upstream:
+      servers:
+        - upstream:80
+      algorithm: round_robin
+    cache_ttl: 30
+    root: ""
+    rate_limit: 100

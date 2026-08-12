@@ -64,6 +64,12 @@ def create_app(
     app.router.add_get("/logs", logs_page)
     app.router.add_get("/nat-diag", nat_diag_page)
 
+    # Static files — serve common/web_static design system
+    common_static = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "common", "web_static")
+    )
+    app.router.add_static("/static/", common_static)
+
     # API endpoints
     app.router.add_get("/api/dashboard", api_dashboard)
     app.router.add_get("/api/peers", api_peers)

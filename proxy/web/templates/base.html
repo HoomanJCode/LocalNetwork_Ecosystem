@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ panel_name }} — LocalNetwork</title>
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/reset.css">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/utilities.css">
     <style>
         :root {
             --bg-primary: #0f1117; --bg-secondary: #1a1d27; --bg-tertiary: #242836;
@@ -51,5 +56,9 @@
         <div class="content">{% block content %}{% endblock %}</div>
     </main>
 </div>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/sse.js"></script>
+<script src="/static/js/tables.js"></script>
 </body>
 </html>

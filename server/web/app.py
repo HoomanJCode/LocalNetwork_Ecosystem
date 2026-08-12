@@ -81,10 +81,11 @@ def create_app(
     app.router.add_get("/api/relay", api_relay)
     app.router.add_get("/api/logs/stream", api_logs_stream)
 
-    # Static files
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    if os.path.isdir(static_dir):
-        app.router.add_static("/static/", static_dir)
+    # Static files — serve common/web_static design system
+    common_static = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "common", "web_static")
+    )
+    app.router.add_static("/static/", common_static)
 
     return app
 

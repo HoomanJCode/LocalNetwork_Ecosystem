@@ -1,0 +1,137 @@
+# ============================================================================
+# LocalNetwork Ecosystem — Docker Compose
+#
+# Starts the full stack:
+#   1. Mediation server (port 54000 + web panel on 54001)
+#   2. Reverse proxy (port 80 → upstream app, web panel on 54010)
+#   3. Sample upstream app (nginx) for proxy demonstration
+#   4. Client node (connects to server, web panel on 54002)
+#
+# Usage:
+#   docker compose up -d                          # full stack
+#   docker compose up server proxy                # server + proxy only
+#   docker compose run client sh                  # client shell for manual ops
+#   docker compose run --rm cli \                 # create a network
+#       localnetwork-cli create mynet --password secret123
+# ============================================================================
+
+version: "3.9"
+
+services:
+  # ---- Mediation server -----------------------------------------------------
+  server:
+    build:
+      context: .
+      target: server
+    container_name: localnetwork-server
+    ports:
+      - "54000:54000"     # control channel
+      - "54001:54001"     # web admin panel
+    environment:
+      LOCALNETWORK_SERVER_HOST: "0.0.0.0"
+      LOCALNETWORK_SERVER_PORT: "54000"
+      LOCALNETWORK_SERVER_WEB_PORT: "54001"
+      LOCALNETWORK_SERVER_LOG_LEVEL: "info"
+      LOCALNETWORK_ADMIN_USER: "admin"
+      LOCALNETWORK_ADMIN_PASSWORD: "changeme"
+    restart: unless-stopped
+    volumes:
+      - server_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('127.0.0.1',54000)); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - localnet
+
+  # ---- Client node ----------------------------------------------------------
+  client:
+    build:
+      context: .
+      target: client
+    container_name: localnetwork-client
+    ports:
+      - "54002:54002"     # web admin panel
+    environment:
+      LOCALNETWORK_SERVER_HOST: "server"
+      LOCALNETWORK_SERVER_PORT: "54000"
+      LOCALNETWORK_CLIENT_WEB_PORT: "54002"
+      LOCALNETWORK_CLIENT_TUN_ENABLED: "true"
+      LOCALNETWORK_CLIENT_LOG_LEVEL: "info"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN          # required for TUN interface
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - client_data:/app/data
+    networks:
+      - localnet
+
+  # ---- Reverse proxy --------------------------------------------------------
+  proxy:
+    build:
+      context: .
+      target: proxy
+    container_name: localnetwork-proxy
+    ports:
+      - "80:80"           # HTTP
+      - "443:443"         # HTTPS
+      - "54010:54010"     # web admin panel
+    environment:
+      LOCALNETWORK_PROXY_WEB_PORT: "54010"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./proxy.yaml:/etc/localnetwork/proxy.yaml:ro
+      - proxy_cache:/var/cache/localnetwork-proxy
+      - proxy_certs:/etc/localnetwork/ssl:ro
+    networks:
+      - localnet
+
+  # ---- Sample upstream app (for proxy demo) ---------------------------------
+  upstream:
+    image: nginx:alpine
+    container_name: localnetwork-upstream
+    restart: unless-stopped
+    volumes:
+      - ./docker/upstream-default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/upstream-html:/usr/share/nginx/html:ro
+    networks:
+      - localnet
+
+  # ---- CLI helper (one-shot, not a daemon) ----------------------------------
+  cli:
+    build:
+      context: .
+      target: client
+    container_name: localnetwork-cli
+    command: localnetwork-cli --help
+    profiles:
+      - tools       # only runs with `docker compose --profile tools run cli ...`
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - localnet
+
+# ---- Volumes ----------------------------------------------------------------
+volumes:
+  server_data:
+  client_data:
+  proxy_cache:
+  proxy_certs:
+
+# ---- Network ----------------------------------------------------------------
+networks:
+  localnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

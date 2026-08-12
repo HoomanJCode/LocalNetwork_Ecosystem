@@ -235,6 +235,24 @@ class Connection:
                         break
                     continue
 
+                # Static file serving (root: directive)
+                root = getattr(location, "root", "")
+                if root and request.method == "GET":
+                    response = await self._serve_static_file(request.path, root, location)
+                    self.state = ConnState.RESPOND
+                    await self._send_response(response)
+                    if self.access_logger:
+                        await self.access_logger.log(
+                            method=request.method, path=request.path,
+                            status=response.status, body_size=len(response.body),
+                            duration_ms=0, client_ip=self.client_ip,
+                        )
+                    if self.status_collector:
+                        self.status_collector.increment_handled()
+                    if not request.is_keepalive:
+                        break
+                    continue
+
                 self.state = ConnState.CONNECT_UPSTREAM
                 upstream_data = await self._connect_upstream(request, location)
                 if upstream_data is None:
@@ -462,6 +480,63 @@ class Connection:
         self.writer.write(status_line.encode() + header_block.encode())
         self.writer.write(response.body)
         await self.writer.drain()
+
+    async def _serve_static_file(
+        self, path: str, root: str, location: Any
+    ) -> HttpResponse:
+        """Serve a static file from the root directory.
+
+        Resolves the request path relative to the root, prevents directory
+        traversal, serves index.html for directory requests, and sets
+        appropriate Content-Type based on file extension.
+        """
+        import mimetypes
+        import os
+
+        # Map request path to filesystem path
+        loc_path = getattr(location, "path", "/")
+        relative = path[len(loc_path):] if path.startswith(loc_path) else path.lstrip("/")
+        if not relative or relative == "/":
+            relative = "index.html"
+
+        # Prevent directory traversal
+        filepath = os.path.normpath(os.path.join(root, relative.lstrip("/")))
+        if not filepath.startswith(os.path.normpath(root)):
+            return HttpResponse(status=403, reason="Forbidden",
+                               headers={"content-type": "text/plain", "connection": "close"},
+                               body=b"403 Forbidden")
+
+        if not os.path.isfile(filepath):
+            # Try index.html for directory requests
+            if os.path.isdir(filepath):
+                filepath = os.path.join(filepath, "index.html")
+            if not os.path.isfile(filepath):
+                return HttpResponse(status=404, reason="Not Found",
+                                   headers={"content-type": "text/plain", "connection": "close"},
+                                   body=b"404 Not Found")
+
+        try:
+            with open(filepath, "rb") as f:
+                body = f.read()
+        except OSError:
+            return HttpResponse(status=403, reason="Forbidden",
+                               headers={"content-type": "text/plain", "connection": "close"},
+                               body=b"403 Forbidden")
+
+        # Detect content type
+        content_type, _ = mimetypes.guess_type(filepath)
+        if content_type is None:
+            content_type = "application/octet-stream"
+
+        # Set caching headers
+        cache_ttl = getattr(location, "cache_ttl", 0)
+        headers = {
+            "content-type": content_type,
+            "content-length": str(len(body)),
+            "cache-control": f"max-age={cache_ttl}" if cache_ttl > 0 else "no-cache",
+        }
+
+        return HttpResponse(status=200, reason="OK", headers=headers, body=body)
 
     async def _send_error(self, status: int, message: str) -> None:
         """Send an error response."""

@@ -7,6 +7,8 @@ the connection handler uses to decide which endpoints to share.
 
 from __future__ import annotations
 
+import random
+import string
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -74,11 +76,16 @@ class ServiceRecord:
 class NetworkManager:
     """Creates, joins, and deletes virtual networks."""
 
+    _INVITE_CODE_LENGTH = 8
+    _INVITE_CODE_ALPHABET = string.ascii_lowercase + string.digits
+
     def __init__(self, registry: ClientRegistry) -> None:
         self._registry = registry
         self._networks: Dict[str, NetworkRecord] = {}
         self._banned_networks: Set[str] = set()
         self._services: Dict[str, Dict[str, ServiceRecord]] = {}  # network_id → {service_id → record}
+        self._invite_codes: Dict[str, str] = {}  # code → network_id
+        self._network_invite_codes: Dict[str, str] = {}  # network_id → code
 
     # ---- creation / lookup --------------------------------------------------
     def create(
@@ -200,6 +207,10 @@ class NetworkManager:
             return False
         for member_id in record.members:
             self._registry.remove_network(member_id, network_id)
+        # Clean up invite code
+        code = self._network_invite_codes.pop(network_id, None)
+        if code:
+            self._invite_codes.pop(code, None)
         del self._networks[network_id]
         return True
 
@@ -300,6 +311,66 @@ class NetworkManager:
                 del svc_map[sid]
                 removed.append(sid)
         return removed
+
+    # ---- invite codes --------------------------------------------------------
+    def generate_invite_code(self, network_id: str) -> str:
+        """Generate a short human-friendly invite code for a network.
+
+        Creates codes like ``a3x9k2bc`` — 8 lowercase alphanumeric chars.
+        Regenerates if collision; retries up to 10 times.
+        """
+        record = self._networks.get(network_id)
+        if record is None:
+            raise ValueError("network not found")
+
+        # If the network already has a code, return it
+        if network_id in self._network_invite_codes:
+            return self._network_invite_codes[network_id]
+
+        for _ in range(10):
+            code = "".join(
+                random.choices(self._INVITE_CODE_ALPHABET, k=self._INVITE_CODE_LENGTH)
+            )
+            if code not in self._invite_codes:
+                self._invite_codes[code] = network_id
+                self._network_invite_codes[network_id] = code
+                return code
+
+        # Fallback: use a prefix from the network name + random suffix
+        prefix = record.name[:4].lower()
+        code = f"{prefix}-{uuid.uuid4().hex[:6]}"
+        self._invite_codes[code] = network_id
+        self._network_invite_codes[network_id] = code
+        return code
+
+    def join_by_invite_code(
+        self, code: str, client_id: str, password: str
+    ) -> Optional[NetworkRecord]:
+        """Join a network using its short invite code instead of network_id.
+
+        Returns:
+            The NetworkRecord on success, None on wrong code/password.
+        """
+        network_id = self._invite_codes.get(code)
+        if network_id is None:
+            return None
+        record = self._networks.get(network_id)
+        if record is None or self.is_banned(network_id):
+            return None
+        try:
+            if not bcrypt.checkpw(password.encode("utf-8"), record.password_hash):
+                return None
+        except ValueError:
+            return None
+        record.members.add(client_id)
+        self._registry.add_network(client_id, network_id)
+        return record
+
+    def get_invite_code(self, network_id: str) -> Optional[str]:
+        """Get the invite code for a network, generating one if needed."""
+        if network_id not in self._networks:
+            return None
+        return self.generate_invite_code(network_id)
 
     # ---- endpoints for hole punching -------------------------------------------
     def shared_endpoints_for(

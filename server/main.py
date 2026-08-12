@@ -184,6 +184,9 @@ class MediationServer:
                 # Command loop
                 if not await self._dispatch(client_id, writer, msg):
                     break  # fatal error for this connection
+                if self.relay is not None:
+                    # Deliver any relayed frames queued for this client
+                    await self.relay.deliver_relayed(client_id, writer)
         except (asyncio.IncompleteReadError, ConnectionError):
             pass
         except Exception as exc:  # never let one client kill the server

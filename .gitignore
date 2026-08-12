@@ -10,3 +10,38 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+### Python
+# Byte-compiled / optimized / generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+### LocalNetwork runtime artifacts
+# Identity keys, config, and logs must never be committed
+.localnetwork/
+*.log
+proxy-config.yml
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp

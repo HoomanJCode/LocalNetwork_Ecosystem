@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Proxy Dashboard</h2>
+<div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">Active Connections</div><div class="stat-value" style="color:var(--accent);" id="stat-conns">—</div></div>
+    <div class="stat-card"><div class="stat-label">Requests Total</div><div class="stat-value" id="stat-requests">—</div></div>
+    <div class="stat-card"><div class="stat-label">Accepted Total</div><div class="stat-value" id="stat-accepted">—</div></div>
+    <div class="stat-card"><div class="stat-label">Cache Hit Rate</div><div class="stat-value" style="color:var(--success);">—</div></div>
+</div>
+<script>
+    async function refresh() {
+        try {
+            const r = await fetch('/api/dashboard');
+            const d = await r.json();
+            document.getElementById('stat-conns').textContent = d.active_connections || 0;
+            document.getElementById('stat-requests').textContent = d.requests_total || 0;
+            document.getElementById('stat-accepted').textContent = d.accepted_total || 0;
+        } catch(e) {}
+    }
+    refresh(); setInterval(refresh, 5000);
+</script>
+{% endblock %}

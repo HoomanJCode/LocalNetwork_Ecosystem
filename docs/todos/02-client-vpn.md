@@ -26,7 +26,7 @@
   - Store `PlatformCapabilities` reference
   - On load: if TUN requested but not available → warn, fall back to service-only mode
 
-- [ ] 5.3 **`client/control_channel.py`**
+- [x] 5.3 **`client/control_channel.py`**
   - `ControlChannel` class:
     - `connect(host, port) -> (reader, writer)` — async TCP
     - `send_message(msg: Message)` — length-prefixed JSON

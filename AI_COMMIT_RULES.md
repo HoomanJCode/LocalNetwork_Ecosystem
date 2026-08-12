@@ -179,11 +179,12 @@ python -m pytest tests/ -v
 
 ---
 
-## 6. Updating the TODO Files Before Merge
+## 6. Updating the TODO Files Before Commit & Merge
 
 ### 6.1 Mark completed tasks
 
-Before merging, update the relevant todo file in `docs/todos/`:
+Update the relevant todo file in `docs/todos/` **before each commit** that
+completes a task (and verify the final state again before merging):
 
 ```diff
 - - [ ] 5.1 **`client/platform_detection.py`** — Platform capability detection
@@ -264,7 +265,7 @@ git push origin master            # only if a remote exists and user asked
 - [ ] Branch is up to date with latest `master`
 - [ ] All task tests pass
 - [ ] No failing tests on the branch
-- [ ] Todo file updated: completed tasks marked `[x]`
+- [ ] Todo files updated before each commit: completed tasks marked `[x]` incrementally
 - [ ] If fully passed: file renamed to `*-passed.md` and index updated
 - [ ] Commit messages follow Conventional Commits
 - [ ] No secrets, credentials, or generated files in the branch
@@ -282,7 +283,7 @@ git push origin master            # only if a remote exists and user asked
 | Merging a branch with a **single** commit | Branch = many small commits (5–20+). Split the work further. |
 | Saving up edits until the end | Commit after every logical step, not at the end. |
 | Fast-forwarding a merge | Always `git merge --no-ff`; never `--ff-only`. |
-| Forgetting to update the todo file | Update `[x]` marks **before** the merge. |
+| Forgetting to update the todo file | Update `[x]` marks **before** each commit, not only before the merge. |
 | Renaming to `passed` too early | Only rename when ALL tasks in the file are done + tests pass. |
 | Leaving temp branches behind | Delete after merge with `git branch -d`. |
 | Merging with failing tests | Run tests first; fix on the branch. |

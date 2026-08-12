@@ -8,7 +8,7 @@
 
 ## Phase 23 — Documentation & README
 
-- [ ] 23.1 Write comprehensive `README.md`
+- [x] 23.1 Write comprehensive `README.md`
   - Project description and motivation
   - Architecture diagram (ASCII or link to image)
   - Requirements: Python 3.10+, OS-specific TUN setup
@@ -17,5 +17,5 @@
   - Configuration reference (YAML for proxy)
   - Troubleshooting section
 
-- [ ] 23.2 Add docstrings to all public APIs
-- [ ] 23.3 Create `CONTRIBUTING.md`
+- [x] 23.2 Add docstrings to all public APIs
+- [x] 23.3 Create `CONTRIBUTING.md`

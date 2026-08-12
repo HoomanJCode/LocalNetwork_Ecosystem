@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Server Overview</h2>
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Uptime</div>
+        <div class="stat-value" style="color:var(--accent);">{{ uptime }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Clients Online</div>
+        <div class="stat-value" style="color:var(--success);" id="stat-online">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Networks</div>
+        <div class="stat-value" id="stat-networks">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Relay Active</div>
+        <div class="stat-value" id="stat-relay">—</div>
+    </div>
+</div>
+<div class="stat-card" style="margin-bottom:16px;">
+    <div class="stat-label">Recent Activity</div>
+    <p style="color:var(--text-secondary); font-size:14px;">Server is running. Connect clients to see activity here.</p>
+</div>
+<script>
+    async function refreshStats() {
+        try {
+            const r = await fetch('/api/dashboard');
+            const d = await r.json();
+            document.getElementById('stat-online').textContent = d.clients_online;
+            document.getElementById('stat-networks').textContent = d.networks;
+            document.getElementById('stat-relay').textContent = '—';
+        } catch(e) {}
+    }
+    refreshStats();
+    setInterval(refreshStats, 5000);
+</script>
+{% endblock %}

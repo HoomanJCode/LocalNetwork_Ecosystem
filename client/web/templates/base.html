@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ panel_name }} — LocalNetwork</title>
+    <style>
+        :root {
+            --bg-primary: #0f1117; --bg-secondary: #1a1d27; --bg-tertiary: #242836;
+            --text-primary: #e4e6f0; --text-secondary: #8b90a5;
+            --accent: #6366f1; --accent-hover: #818cf8;
+            --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
+            --border: #2d3245; --radius-md: 8px;
+            --sidebar-width: 240px; --header-height: 56px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary); color: var(--text-primary); min-height: 100vh;
+        }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: var(--sidebar-width); background: var(--bg-secondary);
+            border-right: 1px solid var(--border); display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+        }
+        .sidebar-header { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; color: var(--text-secondary); text-transform: uppercase; }
+        .sidebar-nav { flex: 1; padding: 8px 0; }
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+            color: var(--text-secondary); text-decoration: none; font-size: 14px;
+            transition: all 100ms; border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .sidebar-nav a.active { background: rgba(99,102,241,0.1); color: var(--accent); border-left-color: var(--accent); }
+        .sidebar-footer { padding: 12px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); }
+        .main { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; }
+        .header {
+            height: var(--header-height); background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border); display: flex; align-items: center;
+            justify-content: space-between; padding: 0 24px;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .content { padding: 24px; flex: 1; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; }
+        .stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; }
+        .stat-value { font-size: 28px; font-weight: 700; }
+        table { width: 100%; border-collapse: collapse; background: var(--bg-secondary); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); }
+        th { padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); background: var(--bg-tertiary); }
+        td { padding: 10px 16px; font-size: 14px; border-top: 1px solid var(--border); }
+        tr:hover td { background: var(--bg-tertiary); }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+        .badge-success { background: rgba(34,197,94,0.15); color: var(--success); }
+        .badge-danger { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .badge-warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .badge-info { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-dot.green { background: var(--success); }
+        .status-dot.red { background: var(--danger); }
+        .status-dot.yellow { background: var(--warning); }
+        .status-dot.blue { background: #3b82f6; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">💻 LocalNetwork</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="{{ 'active' if active_page == 'dashboard' else '' }}">📊 Dashboard</a>
+            <a href="/networks" class="{{ 'active' if active_page == 'networks' else '' }}">🌐 Networks</a>
+            <a href="/peers" class="{{ 'active' if active_page == 'peers' else '' }}">👥 Peers</a>
+            <a href="/services" class="{{ 'active' if active_page == 'services' else '' }}">📦 Services</a>
+            <a href="/config" class="{{ 'active' if active_page == 'config' else '' }}">⚙️ Config</a>
+            <a href="/logs" class="{{ 'active' if active_page == 'logs' else '' }}">📋 Logs</a>
+            <a href="/nat-diag" class="{{ 'active' if active_page == 'nat_diag' else '' }}">🔍 NAT Diag</a>
+        </nav>
+        <div class="sidebar-footer">v0.1.0</div>
+    </aside>
+    <main class="main">
+        <header class="header">
+            <h1>{{ panel_name }}</h1>
+            <span class="status-dot {{ 'green' if status == 'connected' else 'red' }}"></span>
+        </header>
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+</body>
+</html>

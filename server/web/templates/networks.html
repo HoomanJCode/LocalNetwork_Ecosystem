@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Networks</h2>
+<table>
+    <thead><tr><th>Name</th><th>ID</th><th>Owner</th><th>Topology</th><th>Members</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% if networks %}
+        {% for n in networks %}
+        <tr>
+            <td>{{ n.name }}</td>
+            <td><code style="font-size:12px;">{{ n.id[:16] }}…</code></td>
+            <td><code style="font-size:12px;">{{ n.owner[:12] }}…</code></td>
+            <td>{{ n.topology }}</td>
+            <td>{{ n.members }}</td>
+            <td><a href="/networks/{{ n.id }}" style="color:var(--accent);">View</a></td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:40px;">No networks created yet.</td></tr>
+    {% endif %}
+    </tbody>
+</table>
+{% endblock %}

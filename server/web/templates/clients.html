@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Clients</h2>
+<table>
+    <thead>
+        <tr><th>Client ID</th><th>Status</th><th>Connected Since</th><th>Networks</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% if clients %}
+        {% for c in clients %}
+        <tr>
+            <td><code style="font-size:12px;">{{ c.id[:16] }}…</code></td>
+            <td>
+                <span class="status-dot {{ 'green' if c.status == 'online' else 'red' }}"></span>
+                <span class="badge {{ 'badge-success' if c.status == 'online' else 'badge-danger' }}">{{ c.status }}</span>
+            </td>
+            <td>{{ c.connected_since }}</td>
+            <td>{{ c.networks }}</td>
+            <td><a href="/clients/{{ c.id }}" style="color:var(--accent);">View</a></td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:40px;">No clients connected yet.</td></tr>
+    {% endif %}
+    </tbody>
+</table>
+{% endblock %}

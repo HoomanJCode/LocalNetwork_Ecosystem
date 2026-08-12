@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Peers</h2>
+<table>
+    <thead><tr><th>Peer IP</th><th>Peer ID</th><th>State</th><th>Last Activity</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% if peers %}
+        {% for p in peers %}
+        <tr>
+            <td><code>{{ p.peer_ip }}</code></td>
+            <td><code style="font-size:12px;">{{ p.peer_id[:16] }}…</code></td>
+            <td>
+                {% set color = 'success' if p.state == 'CONNECTED' else ('info' if p.state == 'PUNCHING' else 'danger') %}
+                <span class="badge badge-{{ color }}">{{ p.state }}</span>
+            </td>
+            <td>{{ p.last_rx }}</td>
+            <td><a href="/peers/{{ p.peer_id }}" style="color:var(--accent);">View</a></td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:40px;">No peers connected yet.</td></tr>
+    {% endif %}
+    </tbody>
+</table>
+{% endblock %}

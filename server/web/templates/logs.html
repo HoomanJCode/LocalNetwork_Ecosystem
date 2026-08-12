@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Logs</h2>
+<div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:var(--font-mono);font-size:13px;height:400px;overflow-y:auto;" id="log-viewer">
+    <span style="color:var(--text-secondary);">Connecting to log stream…</span>
+</div>
+<script>
+    const source = new EventSource('/api/logs/stream');
+    const viewer = document.getElementById('log-viewer');
+    source.onmessage = function(e) {
+        const d = JSON.parse(e.data);
+        viewer.innerHTML += '<div style="margin-bottom:4px;">[' + new Date(d.ts*1000).toLocaleTimeString() + '] ' + d.msg + '</div>';
+        viewer.scrollTop = viewer.scrollHeight;
+    };
+</script>
+{% endblock %}

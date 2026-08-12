@@ -20,7 +20,7 @@
   - `print_capabilities()` — pretty-print what's available and what's disabled
   - Degradation rules: if `tun_available == False` → TUN mode disabled, service exposure only; if `has_root == False` → privileged features off; if `is_termux == True` → TUN permanently disabled
 
-- [ ] 5.2 **`client/config.py`**
+- [x] 5.2 **`client/config.py`**
   - `ClientConfig` dataclass: server_host, server_port, identity_dir, virtual_ip (optional)
   - Load from env / `.env` / CLI args
   - Store `PlatformCapabilities` reference

@@ -100,6 +100,21 @@ After installation, four commands are available:
 | `localnetwork-cli` | Management CLI for creating/joining/listing networks |
 | `localnetwork-proxy` | Reverse proxy and load balancer |
 
+### Docker (alternative)
+
+```bash
+# Build and run the full stack (server + proxy + client + demo upstream)
+docker compose up -d
+
+# Or individual services:
+docker compose up server proxy          # server + proxy only
+docker compose run client sh            # client shell for manual ops
+
+# Create a network via CLI container:
+docker compose run --rm cli localnetwork-cli create mynet --password secret
+# → emits an 8-char invite code for friends to join
+```
+
 ---
 
 ## Quick Start (2 machines, 5 minutes)
@@ -133,15 +148,21 @@ localnetwork-client --server <server-ip>:54000 --log-level INFO
 
 ```bash
 localnetwork-cli --host localhost --port 54000 create mynet --password secret
-# → Created network 'mynet' with id 7f9c2b14-...
+# → Created network 'mynet'
+#   Network ID:  7f9c2b14-...
+#   Invite code: a3x9k2bc        ← share this + password with friends
 ```
 
 ### 5. Join the network (from client B)
 
 ```bash
-localnetwork-cli --host <server-ip> --port 54000 join 7f9c2b14-... --password secret
+# Join by invite code (short) or by full network ID:
+localnetwork-cli --host <server-ip> --port 54000 join a3x9k2bc --password secret
 # → Joined network 7f9c2b14-...
 ```
+
+> **Invite codes** are 8-character alphanumeric shortcuts (e.g. `a3x9k2bc`).
+> Use them instead of the full UUID when sharing networks with friends.
 
 Both daemons now log `peer online` notifications. For full TUN-mode (virtual LAN with ping/SSH), start clients with `--tun` and run as root.
 
@@ -195,7 +216,7 @@ Once the server or client is running, open the web dashboard:
 | Panel | URL | Description |
 |-------|-----|-------------|
 | Server Admin | `http://<server>:54001` | Monitor clients, networks, relay, config |
-| Client Admin | `http://localhost:54002` | Manage networks, peers, tunnels, services |
+| Client Admin | `http://localhost:54002` | Dashboard, feature launcher (TUN, services, NAT, connection, topology), peers, config |
 | Proxy Admin | `http://localhost:54010` | View upstreams, cache stats, active connections |
 
 ---
@@ -424,7 +445,12 @@ The project is developed in phases ([TODO.md](TODO.md)). All 23 phases are compl
 - ✅ Setup wizard & friendly CLI UX (`--daemon`, colored output, status indicator)
 - ✅ User-facing error catalog (plain language messages with suggestions)
 - ✅ Server web admin panel (clients, networks, relay, config, logs, access control)
-- ✅ Client web admin panel (dashboard, networks, peers, services, NAT diagnostics)
+- ✅ Client web admin panel (dashboard, feature launcher with start/stop buttons, networks, peers, services, NAT diagnostics)
+- ✅ Feature launcher: start/stop TUN, services, NAT traversal, connection, topology from the browser
+- ✅ Network invite codes: 8-char alphanumeric shortcuts instead of UUIDs
+- ✅ Static file serving in reverse proxy (`root:` directive with MIME detection, dir index)
+- ✅ Docker + docker-compose: multi-stage Dockerfile, full-stack orchestration
+- ✅ Shared web panel design system (CSS variables, components, JS modules served from common/web_static)
 - ✅ Web panels auto-start alongside daemons (no separate process needed)
 - ✅ Reverse proxy / load balancer (master-worker model, 4 LB algorithms, health checks)
 - ✅ Reverse proxy: full HTTP/1.1 engine (request parsing, header management, chunked encoding)
@@ -497,7 +523,11 @@ proxy/      Reverse proxy / load balancer
             ├── status.py        Runtime statistics collector
             └── web/             Proxy admin panel
 common/     Shared protocol constants, messages, frames, errors, logging, web UI assets
-common/web_static/  Shared admin-panel design system (CSS/JS)
+common/web_static/  Shared admin-panel design system (CSS variables, layout, components, JS: dashboards, tables, toasts, SSE)
+Dockerfile   Multi-stage build (server / client / proxy targets)
+docker-compose.yml  Full-stack orchestration (server, proxy, client, nginx upstream, CLI)
+proxy.yaml   Sample reverse-proxy configuration
+docker/      Docker demo files (nginx config + sample HTML)
 scripts/    Development runner scripts (run_dev.sh / run_dev.bat)
 tests/      Unit, integration, proxy config, and E2E tests (pytest, 300+ tests)
 docs/       Architecture (DESIGN.md) and phased implementation plan (TODO.md + todos/)

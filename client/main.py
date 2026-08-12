@@ -153,10 +153,43 @@ class ClientDaemon:
 
         log.info("client daemon running (tun=%s)", self.config.tun_mode_active)
 
-        await self._shutdown.wait()
+        # Start web admin panel if configured
+        web_task = None
+        if self.config.web_port and self.config.web_port > 0:
+            web_task = asyncio.create_task(self._start_web_panel())
+
+        try:
+            await self._shutdown.wait()
+        finally:
+            if web_task:
+                web_task.cancel()
 
         # Graceful shutdown
         await self._shutdown_daemon()
+
+    async def _start_web_panel(self) -> None:
+        """Start the admin web panel alongside the daemon."""
+        try:
+            from client.web.app import create_app
+            from aiohttp import web
+
+            app = create_app(
+                daemon=self,
+                control_channel=self.channel,
+                tunnel_manager=self.tunnels,
+            )
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, "127.0.0.1", self.config.web_port)
+            await site.start()
+            log.info("web admin panel listening on 127.0.0.1:%s", self.config.web_port)
+
+            while True:
+                await asyncio.sleep(3600)
+        except ImportError:
+            log.debug("web panel skipped: aiohttp not installed")
+        except Exception as exc:
+            log.warning("web panel failed to start: %r", exc)
 
     # ---- TUN setup ----------------------------------------------------------
     async def _setup_tun(self) -> None:

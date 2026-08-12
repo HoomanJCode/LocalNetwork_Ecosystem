@@ -39,7 +39,7 @@
     - `list_for_client(client_id) -> list[NetworkRecord]`
     - `delete(network_id, requester_id)`
 
-- [ ] 3.5 **`server/auth.py`**
+- [x] 3.5 **`server/auth.py`**
   - `generate_challenge() -> bytes` — 32 random bytes
   - `create_auth_challenge(client_id) -> AuthChallenge`
   - `verify_auth_response(public_key_pem, challenge, signature) -> bool`

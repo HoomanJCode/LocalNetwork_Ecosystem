@@ -45,7 +45,7 @@
   - `verify_auth_response(public_key_pem, challenge, signature) -> bool`
   - `AuthSession` — tracks pending challenges (TTL 60s)
 
-- [ ] 3.6 **`server/main.py`** — asyncio TCP server
+- [x] 3.6 **`server/main.py`** — asyncio TCP server
   - `MediationServer` class:
     - `start()` — bind, listen, accept loop
     - `handle_client(reader, writer)` — per-connection coroutine

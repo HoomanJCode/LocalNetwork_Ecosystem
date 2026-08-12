@@ -143,6 +143,16 @@ def public_key_fingerprint(public_key: rsa.RSAPublicKey) -> str:
     return ":".join(f"{b:02x}" for b in digest[:16])
 
 
+def client_id_for_public_key(public_key: rsa.RSAPublicKey) -> str:
+    """Return a stable, wire-safe client id derived from the public key.
+
+    The fingerprint is 32 lowercase hex chars with colons removed, so it
+    satisfies the server's ``[A-Za-z0-9_-]{8,64}`` client_id rule while
+    remaining unique per identity.
+    """
+    return public_key_fingerprint(public_key).replace(":", "")
+
+
 def sign_challenge(
     private_key: rsa.RSAPrivateKey, challenge: bytes
 ) -> bytes:
@@ -174,6 +184,7 @@ __all__ = [
     "load_identity",
     "load_public_key",
     "public_key_fingerprint",
+    "client_id_for_public_key",
     "sign_challenge",
     "verify_challenge",
 ]

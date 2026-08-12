@@ -54,13 +54,11 @@ class ClientDaemon:
             identity.save_identity(
                 self.private_key, self.public_key, path=self.config.identity_dir
             )
-        from client.identity import public_key_fingerprint
-
         log.info(
             "identity ready (fingerprint %s)",
-            public_key_fingerprint(self.public_key)[:20] + "…",
+            identity.public_key_fingerprint(self.public_key)[:20] + "…",
         )
-        return identity.public_key_fingerprint(self.public_key)
+        return identity.client_id_for_public_key(self.public_key)
 
     async def run(self) -> None:
         """Connect, authenticate, and keep the daemon alive."""

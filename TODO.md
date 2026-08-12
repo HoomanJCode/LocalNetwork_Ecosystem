@@ -12,7 +12,7 @@ phase numbering so cross-references stay stable.
 
 | File | Phases | Description |
 |------|--------|-------------|
-| [00-foundation.md](docs/todos/00-foundation.md) | 0–2 | Project skeleton, protocol constants/messages/frames, cryptography |
+| [00-foundation-passed.md](docs/todos/00-foundation-passed.md) ✅ | 0–2 | Project skeleton, protocol constants/messages/frames, cryptography |
 | [01-server.md](docs/todos/01-server.md) | 3–4 | Mediation server core + relay fallback |
 | [02-client-vpn.md](docs/todos/02-client-vpn.md) | 5–9 | Client core, platform detection, NAT traversal, P2P tunnels, TUN interface, topologies |
 | [03-service-exposure.md](docs/todos/03-service-exposure.md) | 14 | Service exposure (port forwarding) |
@@ -24,7 +24,7 @@ phase numbering so cross-references stay stable.
 
 ## Suggested Implementation Order
 
-1. **Foundation** — [00-foundation.md](docs/todos/00-foundation.md) (Phases 0–2)
+1. **Foundation** — [00-foundation-passed.md](docs/todos/00-foundation-passed.md) ✅ (Phases 0–2)
 2. **Mediation server** — [01-server.md](docs/todos/01-server.md) (Phases 3–4)
 3. **Client core + VPN** — [02-client-vpn.md](docs/todos/02-client-vpn.md) (Phases 5–9)
 4. **UX basics** — [06-ux-cli.md](docs/todos/06-ux-cli.md) (Phase 10)
@@ -38,9 +38,9 @@ phase numbering so cross-references stay stable.
 
 | Phase | Description                        | Est. Effort | File |
 |-------|------------------------------------|-------------|------|
-| 0     | Skeleton & tooling                 | Small       | [00](docs/todos/00-foundation.md) |
-| 1     | Protocol & frame definitions       | Small       | [00](docs/todos/00-foundation.md) |
-| 2     | Cryptography                       | Medium      | [00](docs/todos/00-foundation.md) |
+| 0     | Skeleton & tooling                 | Small       | [00](docs/todos/00-foundation-passed.md) ✅ |
+| 1     | Protocol & frame definitions       | Small       | [00](docs/todos/00-foundation-passed.md) ✅ |
+| 2     | Cryptography                       | Medium      | [00](docs/todos/00-foundation-passed.md) ✅ |
 | 3     | Mediation server core              | Large       | [01](docs/todos/01-server.md) |
 | 4     | Server relay fallback              | Medium      | [01](docs/todos/01-server.md) |
 | 5     | Client core                        | Large       | [02](docs/todos/02-client-vpn.md) |

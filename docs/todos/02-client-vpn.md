@@ -56,7 +56,7 @@
     - `info <network-id>`
   - Signal handling for graceful shutdown
 
-- [ ] 5.5 **Write tests:**
+- [x] 5.5 **Write tests:**
   - `tests/test_platform_detection.py`
     - Detect current platform correctly
     - Root detection matches actual UID

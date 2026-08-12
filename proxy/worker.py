@@ -108,6 +108,7 @@ class WorkerProcess:
         finally:
             for server in servers:
                 server.close()
+                await server.wait_closed()
             if self.access_logger is not None:
                 await self.access_logger.stop()
             log.info("worker %d stopped", self.worker_id)

@@ -152,15 +152,14 @@ class NetworkManager:
         return peers
 
     def list_for_client(self, client_id: str) -> List[NetworkRecord]:
-        """Networks a client belongs to (as member or owner)."""
-        owned = [r for r in self._networks.values() if r.owner_id == client_id]
-        joined = [
+        """Networks a client currently belongs to (active membership only).
+
+        Ownership alone does not count — an owner who left the network no
+        longer sees it in their list.
+        """
+        return [
             r for r in self._networks.values() if client_id in r.members
         ]
-        seen: Dict[str, NetworkRecord] = {}
-        for record in owned + joined:
-            seen[record.network_id] = record
-        return list(seen.values())
 
     # ---- deletion --------------------------------------------------------------
     def delete(self, network_id: str, requester_id: str) -> bool:

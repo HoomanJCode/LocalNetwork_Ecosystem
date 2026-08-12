@@ -157,7 +157,8 @@ class MediationServer:
                     log.warning("oversized message (%d bytes) from %s", length, peer)
                     break
                 body = await reader.readexactly(length)
-                msg = proto.parse_message(body)
+                # deserialize expects the full length-prefixed buffer
+                msg = proto.parse_message(data + body)
 
                 if not registered:
                     if msg.type != constants.MSG_REGISTER:
@@ -234,7 +235,14 @@ class MediationServer:
         self._authenticated[client_id] = False
 
         challenge = self.auth.issue(client_id)
-        await self._send(writer, make_message(challenge))
+        await self._send(
+            writer,
+            make_message(
+                AuthChallenge,
+                challenge=challenge.challenge,
+                client_id=challenge.client_id,
+            ),
+        )
         log.info("client %s registered from %s", client_id, endpoint)
         return client_id
 

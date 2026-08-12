@@ -1223,7 +1223,18 @@ pywintun>=0.1            # Wintun adapter bindings
 ```
 LocalNetwork_Ecosystem/
 ├── DESIGN.md                 # This document
-├── TODO.md                   # Implementation checklist
+├── TODO.md                   # Implementation plan index (links to docs/todos/)
+├── docs/
+│   └── todos/                # Split implementation phases
+│       ├── 00-foundation.md       # Phases 0–2
+│       ├── 01-server.md           # Phases 3–4
+│       ├── 02-client-vpn.md       # Phases 5–9
+│       ├── 03-service-exposure.md # Phase 14
+│       ├── 04-web-panels.md       # Phases 15–16
+│       ├── 05-reverse-proxy.md    # Phases 17–22
+│       ├── 06-ux-cli.md           # Phases 10–11
+│       ├── 07-testing-hardening.md# Phases 12–13
+│       └── 08-docs.md             # Phase 23
 ├── requirements.txt
 ├── README.md
 ├── server/

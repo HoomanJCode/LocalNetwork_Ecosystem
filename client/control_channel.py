@@ -35,6 +35,7 @@ from common.messages import (
     RelayFrame,
     RelayGranted,
     RelayRequest,
+    RequestPeerConn,
     deserialize,
     make_message,
     serialize,
@@ -82,6 +83,10 @@ class ControlChannel:
         self._authenticated = False
         self._connected = False
         self._events: asyncio.Queue = asyncio.Queue()
+        self._responses: asyncio.Queue = asyncio.Queue()
+        self._expected_type: Optional[str] = None
+        # True while the background reader task owns the stream
+        self._reader_owned = False
         self._event_task: Optional[asyncio.Task] = None
         self._heartbeat_task: Optional[asyncio.Task] = None
         self._reconnect_task: Optional[asyncio.Task] = None
@@ -155,28 +160,47 @@ class ControlChannel:
         if length > constants.MAX_MESSAGE_SIZE:
             raise ControlChannelError(f"server sent oversized message ({length} bytes)")
         body = await self._reader.readexactly(length)
-        return deserialize(body)
+        # deserialize expects the full length-prefixed buffer
+        return deserialize(data + body)
 
     async def request(
         self, msg: Message, expected: str, timeout: Optional[float] = None
     ) -> Message:
         """Send a command and await a specific response type.
 
+        Requests are serialized with a lock. When the background reader owns
+        the stream (post-auth), responses arrive via ``_responses``; before
+        that the method reads the stream directly.
+
         Raises:
             ControlChannelError: If the server replies with ERROR.
             TimeoutError: If no reply arrives within ``timeout``.
         """
         async with self._network_lock:
-            await self.send_message(msg)
-            while True:
-                reply = await self.recv_message(timeout=timeout)
-                if reply.type == constants.MSG_ERROR:
-                    payload = reply.payload
-                    raise ControlChannelError(
-                        f"{payload.get('code', 'ERROR')}: {payload.get('message', '')}"
-                    )
-                if reply.type == expected:
-                    return reply
+            # Set the expected type before sending so a fast reply is still
+            # routed to _responses by the background reader.
+            self._expected_type = expected
+            try:
+                await self.send_message(msg)
+                while True:
+                    if self._reader_owned:
+                        reply = await asyncio.wait_for(
+                            self._responses.get(), timeout
+                        )
+                        if reply is None:
+                            raise ChannelClosedError("connection lost")
+                    else:
+                        reply = await self.recv_message(timeout=timeout)
+                    if reply.type == constants.MSG_ERROR:
+                        payload = reply.payload
+                        raise ControlChannelError(
+                            f"{payload.get('code', 'ERROR')}: "
+                            f"{payload.get('message', '')}"
+                        )
+                    if reply.type == expected:
+                        return reply
+            finally:
+                self._expected_type = None
 
     # ------------------------------------------------------------------
     # Registration & authentication
@@ -251,7 +275,7 @@ class ControlChannel:
 
     async def request_peer_endpoints(self, peer_id: str) -> List[Tuple[str, int]]:
         reply = await self.request(
-            make_message(constants.MSG_REQUEST_PEER_CONN, peer_id=peer_id),
+            make_message(RequestPeerConn, peer_id=peer_id),
             expected=constants.MSG_PEER_ENDPOINTS,
         )
         endpoints = reply.payload.get("endpoints", [])
@@ -284,26 +308,31 @@ class ControlChannel:
             yield event
 
     def _start_background_tasks(self) -> None:
+        # Transfer stream ownership to the background reader *now* so no
+        # request() call can race it with a direct readexactly() afterwards.
+        self._reader_owned = True
         if self._event_task is None or self._event_task.done():
             self._event_task = asyncio.create_task(self._event_loop())
         if self._heartbeat_task is None or self._heartbeat_task.done():
             self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def _event_loop(self) -> None:
-        """Background reader: push non-command messages into the event queue."""
+        """Background reader: the sole owner of the stream after auth.
+
+        Classifies each message: a reply matching the pending request (or an
+        ERROR) goes to ``_responses``; everything else becomes a push event.
+        """
+        self._reader_owned = True
         try:
             while self._connected and not self._stopped:
                 msg = await self.recv_message()
-                if msg.type in {
-                    constants.MSG_PEER_ONLINE,
-                    constants.MSG_PEER_OFFLINE,
-                    constants.MSG_NETWORK_PEERS,
-                    constants.MSG_RELAY_FRAME,
-                    constants.MSG_RELAY_GRANTED,
-                    constants.MSG_SERVICE_ADDED,
-                    constants.MSG_SERVICE_REMOVED,
-                    constants.MSG_SERVICE_LIST,
-                }:
+                expected = self._expected_type
+                if expected is not None and msg.type in (
+                    expected,
+                    constants.MSG_ERROR,
+                ):
+                    await self._responses.put(msg)
+                else:
                     await self._events.put(msg)
         except (ConnectionError, asyncio.IncompleteReadError, ChannelClosedError):
             await self._on_connection_lost()
@@ -312,6 +341,8 @@ class ControlChannel:
         except Exception as exc:
             log.warning("event loop error: %r", exc)
             await self._on_connection_lost()
+        finally:
+            self._reader_owned = False
 
     async def _heartbeat_loop(self) -> None:
         while self._connected and not self._stopped:
@@ -332,6 +363,8 @@ class ControlChannel:
             self._writer.close()
             self._writer = None
         self._reader = None
+        # Wake any waiter blocked on a response
+        await self._responses.put(None)
         log.warning("control channel lost; reconnecting in %.1fs", self._backoff)
         await self.start_reconnect()
 
@@ -354,6 +387,7 @@ class ControlChannel:
         self._reader = None
         self._connected = False
         self._authenticated = False
+        self._reader_owned = False
 
     @property
     def connected(self) -> bool:

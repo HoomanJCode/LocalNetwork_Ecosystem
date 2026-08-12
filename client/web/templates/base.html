@@ -73,6 +73,7 @@
         <div class="sidebar-header">💻 LocalNetwork</div>
         <nav class="sidebar-nav">
             <a href="/" class="{{ 'active' if active_page == 'dashboard' else '' }}">📊 Dashboard</a>
+            <a href="/features" class="{{ 'active' if active_page == 'features' else '' }}">🚀 Features</a>
             <a href="/networks" class="{{ 'active' if active_page == 'networks' else '' }}">🌐 Networks</a>
             <a href="/peers" class="{{ 'active' if active_page == 'peers' else '' }}">👥 Peers</a>
             <a href="/services" class="{{ 'active' if active_page == 'services' else '' }}">📦 Services</a>
@@ -85,7 +86,9 @@
     <main class="main">
         <header class="header">
             <h1>{{ panel_name }}</h1>
+            {% if status %}
             <span class="status-dot {{ 'green' if status == 'connected' else 'red' }}"></span>
+            {% endif %}
         </header>
         <div class="content">
             {% block content %}{% endblock %}

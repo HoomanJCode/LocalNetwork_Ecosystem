@@ -75,7 +75,7 @@
 
 ## Phase 6 — NAT Traversal (UDP Hole Punching)
 
-- [ ] 6.1 **`client/nat_traversal.py`**
+- [x] 6.1 **`client/nat_traversal.py`**
   - `NatTraversal` class:
     - `__init__(local_port_range: tuple[int, int])`
     - `bind_udp_socket() -> socket.socket` — bind to an available port
@@ -89,7 +89,7 @@
   - `determine_nat_type(stun_server=...) -> NatType` — optional STUN-based NAT classification
     (for diagnostics). Enum: OPEN, FULL_CONE, RESTRICTED, PORT_RESTRICTED, SYMMETRIC
 
-- [ ] 6.2 **Write tests:**
+- [x] 6.2 **Write tests:**
   - `tests/test_nat_traversal.py`
     - Two local sockets on localhost: hole-punch succeeds
     - Timeout when no peer responds
@@ -100,7 +100,7 @@
 
 ## Phase 7 — P2P Tunnel Manager
 
-- [ ] 7.1 **`client/tunnel_manager.py`**
+- [x] 7.1 **`client/tunnel_manager.py`**
   - `PeerTunnel` dataclass: peer_id, peer_ip, state, socket, cipher, last_rx, tx_seq, rx_seq
   - `TunnelManager` class:
     - `create_tunnel(peer_id, peer_ip, peer_endpoints) -> PeerTunnel`
@@ -118,13 +118,13 @@
     - `prune_stale(timeout)` — close tunnels with no rx for > timeout
   - `recv_loop()` — background asyncio task: poll all tunnel sockets, decrypt, dispatch to TUN
 
-- [ ] 7.2 **`client/keepalive.py`**
+- [x] 7.2 **`client/keepalive.py`**
   - `KeepAliveManager`:
     - Every 10s: send KEEPALIVE frame on each tunnel
     - Track `last_rx`; if > 30s since last rx, mark tunnel as suspect
     - If > 60s, close tunnel and notify server
 
-- [ ] 7.3 **Write tests:**
+- [x] 7.3 **Write tests:**
   - `tests/test_tunnel_manager.py`
     - Create two TunnelManagers, punch tunnel between them
     - Send/receive data round-trip

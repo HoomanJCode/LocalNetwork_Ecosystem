@@ -11,7 +11,10 @@
 |------|-----|
 | **Never commit directly to `master`** | Every change goes through a temporary branch that gets reviewed, merged, and deleted. |
 | **Never make a single giant commit** | Break work into small, logical, reviewable commits. One commit per logical step. |
-| **One temporary branch per todo item** | A "todo" is a task from the TODO files (see `TODO.md` → `docs/todos/*.md`). |
+| **Many small commits per branch — never a single commit** | A branch exists to accumulate a series of fixes/features; merge it only after several small commits (typically 5–20+). A branch with one commit is a warning sign — split the work further. |
+| **One temporary branch per unit of work** | A "unit of work" is a coherent bundle of related fixes or tasks (e.g. all fixes for one feature area, one phase, or a bug cluster from the TODO files). Group related tasks on the same branch; use separate branches for unrelated work. |
+| **Commit small pieces, step by step** | After every logical step (a working function, a test, a wiring change) make a small commit. Never save up edits into one commit at the end. |
+| **Merge with `--no-ff` only** | Always create a merge commit so the branch's commits stay grouped in history. Never fast-forward. |
 | **Update the todo files to reflect reality** | Mark tasks done, rename files that fully passed. |
 
 ---
@@ -20,33 +23,35 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  1. Pick a todo item (e.g. Phase 5, task 5.1)                   │
+│  1. Pick a unit of work (a todo task, a phase, or a bug cluster)│
 │                                                                 │
 │  2. Create a temporary branch from master                       │
-│       git checkout master && git checkout -b feat/task-5.1      │
+│       git checkout master && git checkout -b feat/area-desc      │
 │                                                                 │
-│  3. Implement the task in small steps.                          │
-│     After EACH logical step, make a small commit                │
-│     (see §3 for commit message format).                         │
-│     ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐             │
-│     │ commit │→ │ commit │→ │ commit │→ │ commit │  (3-10+)   │
-│     └────────┘  └────────┘  └────────┘  └────────┘             │
+│  3. Implement the work in many small steps.                     │
+│     After EACH logical step, make a small commit.               │
+│     NEVER merge a branch with a single commit.                  │
+│     ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
+│     │commit 1│→ │commit 2│→ │commit 3│→ │commit 4│→ │  ...   │ │
+│     └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
+│     (5–20+ commits; see §4 for message format)                 │
 │                                                                 │
-│  4. Run the relevant tests / lints for the task                 │
+│  4. Run the relevant tests / lints for the work                 │
 │       python -m pytest tests/test_xxx.py -v                     │
+│     Fix failures with further small commits, then re-run.       │
 │                                                                 │
 │  5. BEFORE merging: update the todo file                        │
 │     - Mark completed task items as [x]                          │
 │     - If the whole FILE's phases passed: add "passed" suffix    │
 │                                                                 │
-│  6. Merge the branch into master (no fast-forward, keep history)│
+│  6. Merge the branch into master with --no-ff (never ff)        │
 │       git checkout master                                       │
-│       git merge --no-ff feat/task-5.1                           │
+│       git merge --no-ff feat/area-desc                          │
 │                                                                 │
 │  7. Delete the temporary branch                                 │
-│       git branch -d feat/task-5.1                               │
+│       git branch -d feat/area-desc                              │
 │                                                                 │
-│  8. Move to the next todo item                                  │
+│  8. Move to the next unit of work                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

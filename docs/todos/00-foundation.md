@@ -32,7 +32,7 @@
   - Frame type constants: `FRAME_DATA = 0x01`, `FRAME_PUNCH = 0x02`, `FRAME_KEEPALIVE = 0x03`, `FRAME_CLOSE = 0x04`, `FRAME_FORWARDED_STREAM = 0x05`
   - Control message type strings
 
-- [ ] 1.2 **`common/messages.py`** — dataclasses for control-channel messages
+- [x] 1.2 **`common/messages.py`** — dataclasses for control-channel messages
   - `Message` base dataclass with `type: str` and `payload: dict`
   - `serialize(msg) -> bytes` — JSON encode + 4-byte BE length prefix
   - `deserialize(data: bytes) -> Message` — read length prefix, JSON decode

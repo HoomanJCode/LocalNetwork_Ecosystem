@@ -45,6 +45,32 @@ class NetworkRecord:
         }
 
 
+@dataclass
+class ServiceRecord:
+    """One service exposed on a network."""
+
+    service_id: str
+    network_id: str
+    provider_id: str
+    name: str
+    protocol: str  # "tcp" or "udp"
+    local_host: str
+    local_port: int
+    created_at: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict:
+        return {
+            "service_id": self.service_id,
+            "network_id": self.network_id,
+            "provider_id": self.provider_id,
+            "name": self.name,
+            "protocol": self.protocol,
+            "local_host": self.local_host,
+            "local_port": self.local_port,
+            "created_at": self.created_at,
+        }
+
+
 class NetworkManager:
     """Creates, joins, and deletes virtual networks."""
 
@@ -52,6 +78,7 @@ class NetworkManager:
         self._registry = registry
         self._networks: Dict[str, NetworkRecord] = {}
         self._banned_networks: Set[str] = set()
+        self._services: Dict[str, Dict[str, ServiceRecord]] = {}  # network_id → {service_id → record}
 
     # ---- creation / lookup --------------------------------------------------
     def create(
@@ -196,6 +223,82 @@ class NetworkManager:
                     record.gateway_id = None
                 if not record.members:
                     del self._networks[network_id]
+        # Also remove all services exposed by this client
+        for network_id, svc_map in self._services.items():
+            to_remove = [
+                sid for sid, svc in svc_map.items()
+                if svc.provider_id == client_id
+            ]
+            for sid in to_remove:
+                del svc_map[sid]
+        return removed
+
+    # ---- service registry ----------------------------------------------------
+    def expose_service(
+        self,
+        network_id: str,
+        provider_id: str,
+        name: str,
+        protocol: str,
+        local_host: str,
+        local_port: int,
+    ) -> str:
+        """Register a service on a network. Returns the service_id."""
+        record = self._networks.get(network_id)
+        if record is None or provider_id not in record.members:
+            raise ValueError("client not a member of this network")
+        service_id = str(uuid.uuid4())
+        svc = ServiceRecord(
+            service_id=service_id,
+            network_id=network_id,
+            provider_id=provider_id,
+            name=name,
+            protocol=protocol,
+            local_host=local_host,
+            local_port=local_port,
+        )
+        self._services.setdefault(network_id, {})[service_id] = svc
+        return service_id
+
+    def unexpose_service(self, network_id: str, service_id: str) -> bool:
+        """Remove a service registration. Returns True if removed."""
+        svc_map = self._services.get(network_id, {})
+        if service_id in svc_map:
+            del svc_map[service_id]
+            return True
+        return False
+
+    def list_services(self, network_id: str) -> List[ServiceRecord]:
+        """List all services exposed on a network."""
+        return list(self._services.get(network_id, {}).values())
+
+    def get_service(self, service_id: str) -> Optional[ServiceRecord]:
+        """Look up a service by its ID."""
+        for svc_map in self._services.values():
+            if service_id in svc_map:
+                return svc_map[service_id]
+        return None
+
+    def unexpose_service_owner(self, service_id: str, client_id: str) -> Optional[str]:
+        """Remove a service if owned by client_id. Returns the network_id or None."""
+        for network_id, svc_map in self._services.items():
+            svc = svc_map.get(service_id)
+            if svc is not None and svc.provider_id == client_id:
+                del svc_map[service_id]
+                return network_id
+        return None
+
+    def purge_client_services(self, client_id: str) -> List[str]:
+        """Remove all services exposed by a client. Returns removed service_ids."""
+        removed: List[str] = []
+        for svc_map in self._services.values():
+            to_remove = [
+                sid for sid, svc in svc_map.items()
+                if svc.provider_id == client_id
+            ]
+            for sid in to_remove:
+                del svc_map[sid]
+                removed.append(sid)
         return removed
 
     # ---- endpoints for hole punching -------------------------------------------
@@ -229,4 +332,4 @@ class NetworkManager:
         return endpoints  # type: ignore[return-value]
 
 
-__all__ = ["NetworkRecord", "NetworkManager"]
+__all__ = ["NetworkRecord", "ServiceRecord", "NetworkManager"]

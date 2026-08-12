@@ -253,6 +253,30 @@ class Connection:
                         break
                     continue
 
+                # WebSocket upgrade detection
+                from proxy.websocket import is_websocket_upgrade, handle_websocket_upgrade
+
+                ws_enabled = getattr(location, "ws_enabled", True)
+                if ws_enabled and is_websocket_upgrade(request.headers):
+                    self.state = ConnState.CONNECT_UPSTREAM
+                    upstream_data = await self._connect_upstream(request, location)
+                    if upstream_data is None:
+                        if not request.is_keepalive:
+                            break
+                        continue
+
+                    # Delegate to WebSocket handler (blocks until close)
+                    await handle_websocket_upgrade(
+                        self, request, location,
+                        (upstream_data[0], upstream_data[1]),
+                    )
+                    # Close the upstream writer
+                    try:
+                        upstream_data[1].close()
+                    except OSError:
+                        pass
+                    break  # WebSocket connections are not keep-alive
+
                 self.state = ConnState.CONNECT_UPSTREAM
                 upstream_data = await self._connect_upstream(request, location)
                 if upstream_data is None:

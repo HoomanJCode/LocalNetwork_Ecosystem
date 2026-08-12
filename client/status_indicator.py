@@ -31,6 +31,23 @@ _STATUS_TEXT = {
     STATE_GRAY: "⚪ Idle",
 }
 
+# Default local admin panel port (matches client/config.py).
+DEFAULT_WEB_PORT = 54002
+
+
+def _web_port(daemon: Any) -> int:
+    """Resolve the client web panel port from the daemon config."""
+    if daemon is None:
+        return DEFAULT_WEB_PORT
+    config = getattr(daemon, "config", None)
+    port = getattr(config, "web_port", None)
+    return port or DEFAULT_WEB_PORT
+
+
+def _web_url(daemon: Any, path: str = "") -> str:
+    """Build a URL into the local web admin panel."""
+    return f"http://localhost:{_web_port(daemon)}{path}"
+
 
 class StatusIndicator:
     """Abstract status indicator.
@@ -170,11 +187,12 @@ class SystemTrayIndicator(StatusIndicator):
     def _open_dashboard(self, icon, item) -> None:
         """Open the web dashboard."""
         import webbrowser
-        webbrowser.open("http://localhost:54002")
+        webbrowser.open(_web_url(self._daemon))
 
     def _share_service(self, icon, item) -> None:
-        """Placeholder for service sharing dialog."""
-        pass
+        """Open the service sharing page of the local admin panel."""
+        import webbrowser
+        webbrowser.open(_web_url(self._daemon, "/services"))
 
     def _quit(self, icon, item) -> None:
         """Request daemon shutdown."""
@@ -236,4 +254,7 @@ __all__ = [
     "STATE_YELLOW",
     "STATE_RED",
     "STATE_GRAY",
+    "DEFAULT_WEB_PORT",
+    "_web_port",
+    "_web_url",
 ]

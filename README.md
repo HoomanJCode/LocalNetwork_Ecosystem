@@ -2,11 +2,11 @@
 
 A Python-based networking toolkit with three core features:
 - **Virtual LAN** — connect remote computers into a private encrypted network
+- **Service Exposure** — share individual TCP/UDP services without root or TUN
 - **Reverse Proxy** — high-performance HTTP/TCP load balancer and traffic manager
 - **Web Admin Panels** — browser-based dashboards for server, client, and proxy
 
-> **Status:** In development — [DESIGN.md](DESIGN.md) defines the architecture and
-> [TODO.md](TODO.md) tracks the phased implementation plan.
+> **Status:** Core implementation complete (22/23 phases). See [TODO.md](TODO.md) for details.
 > **Quick start:** see [USAGE.md](USAGE.md) for the one-page command reference.
 
 ---
@@ -82,19 +82,22 @@ root/admin because it creates a virtual network interface.
 pip install localnetwork-ecosystem
 
 # Option 2: From source
-git clone https://github.com/your-org/LocalNetwork_Ecosystem.git
+git clone https://github.com/HoomanJCode/LocalNetwork_Ecosystem.git
 cd LocalNetwork_Ecosystem
 pip install -r requirements.txt
 pip install -e .      # makes localnetwork-* commands available
 ```
 
-After installation, three commands are available:
+After installation, four commands are available:
 
 | Command | Purpose |
 |---------|---------|
 | `localnetwork-server` | Runs the mediation server (registry, auth, relay) |
-| `localnetwork-client` | Runs the VPN client daemon (connect + keepalive) |
+| `localnetwork-client` | Runs the VPN client daemon (connect, tunnels, TUN) |
 | `localnetwork-cli` | Management CLI for creating/joining/listing networks |
+| `localnetwork-proxy` | Reverse proxy and load balancer |
+
+---
 
 ## Quick Start (2 machines, 5 minutes)
 
@@ -111,10 +114,9 @@ mediation server listening on 0.0.0.0:54000 (max_clients=256)
 
 > **Firewall:** open TCP port `54000` so clients can reach the server.
 
-### 2. Connect client A (machine 1, same terminal or another)
+### 2. Connect client A (machine 1, another terminal)
 
 ```bash
-# Terminal 2 — connect to the server and stay online
 localnetwork-client --server localhost:54000 --log-level INFO
 ```
 
@@ -138,9 +140,36 @@ localnetwork-cli --host <server-ip> --port 54000 join 7f9c2b14-... --password se
 # → Joined network 7f9c2b14-...
 ```
 
-Both daemons now log `peer online` notifications — the two clients can
-see each other through the mediation server. (Direct P2P tunnels between
-peers arrive with the tunnel manager; see [Roadmap](#roadmap).)
+Both daemons now log `peer online` notifications. For full TUN-mode (virtual LAN with ping/SSH), start clients with `--tun` and run as root.
+
+### Enable Virtual LAN (TUN mode)
+
+```bash
+# Linux — needs root
+sudo localnetwork-client --server localhost:54000 --tun --virtual-ip 25.1.0.1
+
+# After TUN is up, peers can ping each other
+ping 25.1.0.2
+```
+
+### Start the Reverse Proxy
+
+```bash
+# Create a proxy config file (proxy.yaml):
+cat > proxy.yaml << 'EOF'
+http: [8080]
+upstreams:
+  - name: app
+    servers:
+      - localhost:3000
+locations:
+  - path: /
+    upstream: app
+EOF
+
+# Start the proxy
+localnetwork-proxy --config proxy.yaml
+```
 
 ### Other useful commands
 
@@ -150,16 +179,183 @@ localnetwork-cli status               # connection status + platform capabilitie
 localnetwork-cli info <network-id>    # network details (owner, topology, members)
 localnetwork-cli leave <network-id>   # leave a network
 localnetwork-client --detect-platform # print platform capabilities and exit
+localnetwork-client --tun             # enable TUN virtual LAN interface
+localnetwork-client --daemon          # run as background daemon
+localnetwork-proxy --validate-config proxy.yaml  # validate proxy config without starting
 localnetwork-server --version
 ```
+
+### Web Admin Panels
+
+Once the server or client is running, open the web dashboard:
+
+| Panel | URL | Description |
+|-------|-----|-------------|
+| Server Admin | `http://<server>:54001` | Monitor clients, networks, relay, config |
+| Client Admin | `http://localhost:54002` | Manage networks, peers, tunnels, services |
+| Proxy Admin | `http://localhost:54010` | View upstreams, cache stats, active connections |
+
+---
+
+## CLI Reference
+
+### Virtual LAN Server
+
+```
+localnetwork-server [OPTIONS]
+
+Options:
+  --host HOST         Bind address (default: 0.0.0.0)
+  --port PORT         TCP port (default: 54000)
+  --web-port PORT     Admin panel HTTP port (default: 54001)
+  --max-clients N     Maximum concurrent clients (default: 256)
+  --log-level LEVEL   DEBUG | INFO | WARNING | ERROR (default: INFO)
+  --version           Show version
+```
+
+### Virtual LAN Client
+
+```
+localnetwork-client [OPTIONS]
+
+Options:
+  --server HOST:PORT     Mediation server address (default: localhost:54000)
+  --identity-dir PATH    Key storage directory (default: ~/.localnetwork/)
+  --virtual-ip IP        Request a specific virtual IP
+  --tun                  Enable TUN mode (virtual LAN interface, needs root)
+  --no-tun               Disable TUN mode even if available
+  --web-port PORT        Admin panel HTTP port (default: 54002)
+  --log-level LEVEL      DEBUG | INFO | WARNING | ERROR
+  --daemon               Fork to background (PID file in ~/.localnetwork/)
+  --detect-platform      Print platform capabilities and exit
+  --version              Show version
+```
+
+### Virtual LAN Management CLI
+
+```
+localnetwork-cli [--host HOST] [--port PORT] <command> [ARGS]
+
+Commands:
+  create NAME [--password PASS] [--topology mesh|hub|gateway] [--virtual-ip IP]
+      Create a new virtual network
+
+  join NETWORK [--password PASS]
+      Join an existing network
+
+  leave NETWORK
+      Leave a network
+
+  list
+      List networks you belong to
+
+  status
+      Show connection status and platform capabilities
+
+  info NETWORK
+      Show network details (members, topology, owner)
+
+  version
+      Show version information
+```
+
+### Reverse Proxy
+
+```
+localnetwork-proxy [OPTIONS]
+
+Options:
+  --config, -c PATH    YAML configuration file (default: proxy.yaml)
+  --workers, -w N      Number of worker processes (default: auto = CPU count)
+  --validate-config    Parse and validate the config file, then exit
+  --log-level LEVEL    DEBUG | INFO | WARNING | ERROR
+  --version, -V        Show version
+```
+
+### Proxy Configuration Reference (YAML)
+
+```yaml
+# proxy.yaml — LocalNetwork Reverse Proxy configuration
+
+workers: 0               # 0 = auto (CPU count)
+worker_connections: 1024
+
+http: [80, 8080]         # HTTP listen ports
+https: [443]             # HTTPS listen ports
+
+upstreams:
+  - name: app
+    algorithm: round_robin   # round_robin | least_conn | ip_hash | random
+    max_failures: 3
+    fail_timeout: 10
+    servers:
+      - host: 10.0.0.1
+        port: 3000
+        weight: 3            # higher = more traffic
+      - host: 10.0.0.2
+        port: 3000
+        weight: 1
+        backup: true         # only used when primaries are down
+      - 10.0.0.3:3000        # short form
+
+locations:
+  - path: /api
+    upstream: app
+    rate_limit: 100          # requests/second (0 = unlimited)
+    compress: true
+  - path: /static
+    root: /var/www/static    # serve static files
+    cache: true
+    cache_ttl: 600
+
+ssl:
+  443:
+    cert: /etc/certs/server.crt
+    key: /etc/certs/server.key
+
+cache:
+  path: /tmp/lnproxy-cache
+  max_size: 104857600       # 100 MB
+
+gzip:
+  enabled: true
+  min_length: 256
+  level: 6
+
+access_log: /var/log/lnproxy/access.log
+error_log: /var/log/lnproxy/error.log
+log_format: combined          # combined | json
+
+admin:
+  port: 54010
+```
+
+### Environment variables
+
+Client and server options can also be set via environment variables or a `.env` file:
+
+| Variable                  | Equivalent            |
+|---------------------------|-----------------------|
+| `LNSERVER_HOST`           | `--host`              |
+| `LNSERVER_PORT`           | `--port`              |
+| `LNSERVER_WEB_PORT`       | `--web-port` (server) |
+| `LNSERVER_MAX_CLIENTS`    | `--max-clients`       |
+| `LNSERVER_LOG_LEVEL`      | `--log-level` (server)|
+| `LNSERVER_ADMIN_USER`     | Admin panel username  |
+| `LNSERVER_ADMIN_PASS`     | Admin panel password  |
+| `LNCLIENT_SERVER`         | `--server`            |
+| `LNCLIENT_SERVER_HOST`    | `--server` (host)     |
+| `LNCLIENT_SERVER_PORT`    | `--server` (port)     |
+| `LNCLIENT_IDENTITY_DIR`   | `--identity-dir`      |
+| `LNCLIENT_VIRTUAL_IP`     | `--virtual-ip`        |
+| `LNCLIENT_WEB_PORT`       | `--web-port` (client) |
+| `LNCLIENT_LOG_LEVEL`      | `--log-level` (client)|
 
 ---
 
 ## Development
 
 ### Dev runner script
-
-The quickest way to set up a development environment and try the whole stack:
 
 **Linux / macOS:**
 
@@ -170,6 +366,7 @@ The quickest way to set up a development environment and try the whole stack:
 ./scripts/run_dev.sh client  # start a client daemon
 ./scripts/run_dev.sh demo    # launch server + 2 clients in separate terminals
 ./scripts/run_dev.sh cli -- create mynet --password secret
+./scripts/run_dev.sh proxy   # start the reverse proxy
 ./scripts/run_dev.sh clean   # remove venv and caches
 ```
 
@@ -182,11 +379,9 @@ scripts\run_dev.bat server
 scripts\run_dev.bat client
 scripts\run_dev.bat demo
 scripts\run_dev.bat cli -- create mynet --password secret
+scripts\run_dev.bat proxy
 scripts\run_dev.bat clean
 ```
-
-Run `./scripts/run_dev.sh help` (or `scripts\run_dev.bat help`) for the full
-command reference inside the script.
 
 ### Running tests directly
 
@@ -209,194 +404,31 @@ for the git workflow AI agents must follow.
 
 ## Roadmap
 
-The project is developed in phases ([TODO.md](TODO.md)). Everything below marked
-**planned** is specified in [DESIGN.md](DESIGN.md) but not implemented yet.
+The project is developed in phases ([TODO.md](TODO.md)). 22 of 23 phases are complete.
 
-### Implemented
+### Implemented ✅
 
 - ✅ Mediation server: register → auth → create/join/leave/list networks
 - ✅ Relay fallback (server forwards encrypted frames when P2P fails)
 - ✅ Client identity (RSA-2048), control channel, heartbeats, reconnection
 - ✅ UDP hole-punching engine + STUN NAT classification
-- ✅ P2P tunnel manager + keepalive manager
-- ✅ Platform capability detection
-- ✅ Full test suite (224+ tests)
+- ✅ P2P tunnel manager + AES-256-GCM encryption + keepalive manager
+- ✅ Platform capability detection (Linux, macOS, Windows, Termux)
+- ✅ TUN virtual interface (Linux/macOS/Windows — full IP-level LAN emulation)
+- ✅ Network topologies (mesh, hub-and-spoke, gateway)
+- ✅ Service exposure / port forwarding (share individual TCP/UDP services, no root)
+- ✅ Setup wizard & friendly CLI UX (`--daemon`, colored output, status indicator)
+- ✅ User-facing error catalog (plain language messages with suggestions)
+- ✅ Server web admin panel (clients, networks, relay, config, logs, access control)
+- ✅ Client web admin panel (dashboard, networks, peers, services, NAT diagnostics)
+- ✅ Reverse proxy / load balancer (master-worker model, 4 LB algorithms, health checks)
+- ✅ Reverse proxy: gzip compression, access logging, runtime stats
+- ✅ Reverse proxy web admin panel (upstreams, cache, config, logs)
+- ✅ Full test suite (unit + integration + proxy config)
 
-### Planned
+### Remaining
 
-- ⏳ TUN virtual interface (full IP-level LAN emulation — ping/SSH over the VPN)
-- ⏳ Network topologies (hub-and-spoke, gateway)
-- ⏳ Service exposure / port forwarding (share one port, no root needed)
-- ⏳ Setup wizard & friendly CLI UX (`localnetwork` launcher, `--daemon`, `diagnose`)
-- ⏳ Web admin panels (server + client dashboards)
-- ⏳ Reverse proxy / load balancer
-
----
-
-## Getting Started (planned UX)
-
-> The friendly wizard described below is **planned** (Phase 10). Until then use
-> the [Quick Start](#quick-start-2-machines-5-minutes) section above.
-
-No technical knowledge needed. The setup wizard will guide you through everything.
-
-### If someone invited you to their network
-
-```bash
-# 1. Install
-pip install localnetwork-ecosystem
-
-# 2. Start — the wizard will appear
-localnetwork
-
-# The wizard asks:
-#   "What would you like to do?" → Choose "Join an existing network"
-#   "Enter the network address:" → Paste what your friend sent you
-#   "Enter the password:" → Type the password they gave you
-#
-# That's it! You're connected.
-```
-
-### If you want to create your own network
-
-```bash
-# 1. Install
-pip install localnetwork-ecosystem
-
-# 2. Start — the wizard will appear
-localnetwork
-
-# The wizard asks:
-#   "What would you like to do?" → Choose "Create a new network"
-#   "What should we call it?" → Type a name like "My Gaming Network"
-#   "Set a password:" → Pick something you'll share with friends
-#
-# Done! Share the network address and password with your friends.
-```
-
-### If you want to share a game server or web app
-
-```bash
-# 1. Open your web dashboard
-localnetwork dashboard
-
-# 2. Click "Share a service"
-# 3. Pick "Game server" (or "Web app" / "Other")
-# 4. Enter the port number (e.g., 25565 for Minecraft)
-# 5. Click "Share"
-#
-# Your friends will see it appear and can connect with one click.
-```
-
-### If you want to set up the reverse proxy
-
-```bash
-# 1. Start the setup wizard for the proxy
-localnetwork proxy-setup
-
-# The wizard asks:
-#   "What port should the proxy listen on?" → 80 or 8080
-#   "Where should traffic go?" → Enter your app's address (e.g., localhost:3000)
-#   "Add another destination server?" → Yes/No (for load balancing)
-#
-# 2. The proxy starts automatically. Open the dashboard:
-localnetwork proxy-dashboard
-```
-
----
-
-## CLI Reference
-
-### Virtual LAN Server
-
-```
-localnetwork-server [OPTIONS]
-
-Options:
-  --host HOST         Bind address (default: 0.0.0.0)
-  --port PORT         TCP port (default: 54000)
-  --web-port PORT     Admin panel HTTP port (flag exists; panel itself is ⏳ planned)
-  --max-clients N     Maximum concurrent clients (default: 256)
-  --log-level LEVEL   DEBUG | INFO | WARNING | ERROR (default: INFO)
-  --version           Show version
-```
-
-### Virtual LAN Client
-
-```
-localnetwork-client [OPTIONS]
-
-Options:
-  --server HOST:PORT     Mediation server address (default: localhost:54000)
-  --identity-dir PATH    Key storage directory (default: ~/.localnetwork/)
-  --virtual-ip IP        Request a specific virtual IP
-  --web-port PORT        Admin panel HTTP port (flag exists; panel itself is ⏳ planned)
-  --log-level LEVEL      DEBUG | INFO | WARNING | ERROR
-  --detect-platform      Print platform capabilities and exit
-  --version              Show version
-```
-
-### Virtual LAN Management CLI
-
-```
-localnetwork-cli <command> [ARGS]
-
-Global options:
-  --host HOST        Server host (default: localhost)
-  --port PORT        Server port (default: 54000)
-
-Commands (✅ implemented, ⏳ planned):
-  ✅ create NAME [--password PASS] [--topology mesh|hub|gateway]
-      Create a new virtual network; prints the network id to share
-
-  ✅ join NETWORK [--password PASS]
-      Join an existing network
-
-  ✅ leave NETWORK
-      Leave a network
-
-  ✅ list
-      List networks you belong to (name, id, topology, members)
-
-  ✅ status
-      Show connection status and platform capabilities
-
-  ✅ info NETWORK
-      Show details about a network (members, topology, owner)
-
-  ✅ version
-      Show version information
-
-  ⏳ peer-endpoints PEER_ID
-      Show the public endpoints of a peer (for debugging)
-
-  ⏳ expose / unexpose / services / map / unmap
-      Service exposure (port forwarding) — Phase 14
-```
-
-### Reverse Proxy ⏳
-
-```
-localnetwork-proxy [OPTIONS]   # planned — Phase 17+
-
-Options:
-  --config PATH      YAML configuration file (default: proxy-config.yml)
-  --workers N        Number of worker processes (default: auto = CPU count)
-  --validate-config  Parse and validate the config file, then exit
-  --version          Show version
-```
-
-### Environment variables
-
-Client and server options can also be set via environment variables or a `.env` file:
-
-| Variable                  | Equivalent            |
-|---------------------------|-----------------------|
-| `LNSERVER_HOST`           | `--host`              |
-| `LNSERVER_PORT`           | `--port`              |
-| `LNCLIENT_SERVER`         | `--server`            |
-| `LNCLIENT_IDENTITY_DIR`   | `--identity-dir`      |
-| `LNCLIENT_LOG_LEVEL`      | `--log-level`         |
+- ⬜ Documentation polish & docstring coverage (Phase 23)
 
 ---
 
@@ -425,15 +457,9 @@ Client and server options can also be set via environment variables or a `.env` 
 | `NO_SHARED_NETWORK` on relay           | Both clients must join the same network before connecting     |
 | Tunnels stuck in `CONNECTING`          | Both peers behind symmetric NAT — relay fallback should kick in. Check server logs. |
 | High latency / low throughput          | You're on relay fallback, not direct P2P                      |
-
-### Planned features (not yet available)
-
-| Symptom                                | Status                                             |
-|----------------------------------------|----------------------------------------------------|
-| `Permission denied` on `/dev/net/tun`  | TUN interface is planned (Phase 8) — not implemented |
-| Can't ping virtual IP                  | Requires TUN mode (Phase 8)                        |
-| `localnetwork diagnose`                | Planned (Phase 10)                                 |
-| Proxy errors (502/504, cache, SSL)     | Reverse proxy is planned (Phase 17+)               |
+| `Permission denied` on `/dev/net/tun`  | TUN mode requires root. Run with `sudo` or use service exposure mode. |
+| Proxy 502 Bad Gateway                  | Upstream server unreachable. Check health status in proxy admin panel. |
+| Proxy returns connection refused       | Upstream port not open. Verify backend servers are running.    |
 
 ---
 
@@ -447,10 +473,11 @@ MIT
 
 ```
 server/     Mediation server (registry, networks, relay, web admin)
-client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN)
-proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, SSL)
-common/     Shared protocol constants, messages, frames, and web UI assets
+client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN, web admin)
+proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, web admin)
+common/     Shared protocol constants, messages, frames, errors, logging, web UI assets
 common/web_static/  Shared admin-panel design system (CSS/JS)
 scripts/    Development runner scripts (run_dev.sh / run_dev.bat)
 tests/      Unit & integration tests (pytest)
+docs/       Architecture (DESIGN.md) and phased implementation plan (TODO.md + todos/)
 ```

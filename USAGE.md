@@ -1,9 +1,7 @@
 # LocalNetwork Ecosystem — Quick Reference
 
-A one-page cheat sheet for the currently implemented commands.
+A one-page cheat sheet for all commands.
 For the full guide see [README.md](README.md); for design details see [DESIGN.md](DESIGN.md).
-
-> ✅ = implemented now &nbsp;·&nbsp; ⏳ = planned (see [README Roadmap](README.md#roadmap))
 
 ---
 
@@ -11,9 +9,10 @@ For the full guide see [README.md](README.md); for design details see [DESIGN.md
 
 | Command | What it does |
 |---------|--------------|
-| `localnetwork-server` | Runs the mediation server (registry, auth, relay) |
-| `localnetwork-client` | Runs the VPN client daemon (connect + heartbeats) |
+| `localnetwork-server` | Runs the mediation server (registry, auth, relay, web admin) |
+| `localnetwork-client` | Runs the VPN client daemon (connect, tunnels, TUN, web admin) |
 | `localnetwork-cli` | Management CLI for networks |
+| `localnetwork-proxy` | Reverse proxy and load balancer |
 
 ---
 
@@ -27,12 +26,12 @@ localnetwork-server --host 0.0.0.0 --port 54000 --log-level INFO
 |--------|---------|---------|
 | `--host HOST` | `0.0.0.0` | Bind address |
 | `--port PORT` | `54000` | Control-channel TCP port |
-| `--web-port PORT` | `54001` | Admin panel port (flag exists; panel ⏳) |
+| `--web-port PORT` | `54001` | Admin panel port |
 | `--max-clients N` | `256` | Max concurrent clients |
 | `--log-level LEVEL` | `INFO` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 | `--version` | — | Show version |
 
-Expected output: `mediation server listening on 0.0.0.0:54000 (max_clients=256)`
+Web admin panel: `http://<server>:54001` (login with `LNSERVER_ADMIN_USER`/`LNSERVER_ADMIN_PASS` env vars).
 
 ---
 
@@ -47,12 +46,15 @@ localnetwork-client --server localhost:54000 --log-level INFO
 | `--server HOST:PORT` | `localhost:54000` | Mediation server address |
 | `--identity-dir PATH` | `~/.localnetwork/` | Key storage (auto-generated on first run) |
 | `--virtual-ip IP` | — | Request a specific virtual IP |
-| `--web-port PORT` | `54002` | Admin panel port (flag exists; panel ⏳) |
+| `--tun` | — | Enable TUN mode (virtual LAN, needs root) |
+| `--no-tun` | — | Disable TUN mode even if available |
+| `--web-port PORT` | `54002` | Admin panel port |
 | `--log-level LEVEL` | `INFO` | Log verbosity |
+| `--daemon` | — | Fork to background |
 | `--detect-platform` | — | Print platform capabilities and exit |
 | `--version` | — | Show version |
 
-Tip: run it once to generate your identity, then the `localnetwork-cli` commands will work.
+Web admin panel: `http://localhost:54002`.
 
 ---
 
@@ -65,7 +67,7 @@ localnetwork-cli [--host HOST] [--port PORT] <command> [ARGS]
 Global options: `--host` (default `localhost`), `--port` (default `54000`),
 `--identity-dir` (default `~/.localnetwork/`).
 
-### ✅ Implemented commands
+### Commands
 
 | Command | Example |
 |---------|---------|
@@ -79,13 +81,41 @@ Global options: `--host` (default `localhost`), `--port` (default `54000`),
 
 `--topology` accepts `mesh` (default), `hub` → hub-and-spoke, `gateway`.
 
-### ⏳ Planned
+---
 
-`peer-endpoints`, `expose`, `unexpose`, `services`, `map`, `unmap` (service exposure, Phase 14).
+## 4. Reverse Proxy
+
+```bash
+localnetwork-proxy --config proxy.yaml
+```
+
+| Option | Default | Purpose |
+|--------|---------|---------|
+| `--config, -c PATH` | `proxy.yaml` | YAML config file |
+| `--workers, -w N` | `0` (auto) | Worker processes |
+| `--validate-config` | — | Parse config and exit |
+| `--log-level LEVEL` | `INFO` | Log verbosity |
+| `--version, -V` | — | Show version |
+
+Web admin panel: `http://localhost:54010`.
+
+Example minimal config:
+
+```yaml
+http: [8080]
+upstreams:
+  - name: backend
+    servers:
+      - localhost:3000
+      - localhost:3001
+locations:
+  - path: /
+    upstream: backend
+```
 
 ---
 
-## 4. Typical flow (two machines)
+## 5. Typical flow (two machines)
 
 ```bash
 # Machine 1 — server
@@ -103,9 +133,21 @@ localnetwork-cli join 7f9c2b14-... --password secret
 
 Both daemons now log `peer online` notifications.
 
+### TUN mode (virtual LAN with ping/SSH)
+
+```bash
+# As root on both machines
+sudo localnetwork-client --server <server-ip>:54000 --tun --virtual-ip 25.1.0.1
+sudo localnetwork-client --server <server-ip>:54000 --tun --virtual-ip 25.1.0.2
+
+# Now you can ping the other machine
+ping 25.1.0.2
+ssh user@25.1.0.2
+```
+
 ---
 
-## 5. Development runner scripts
+## 6. Development runner scripts
 
 ```bash
 # Linux / macOS
@@ -113,6 +155,7 @@ Both daemons now log `peer online` notifications.
 ./scripts/run_dev.sh test     # run all tests
 ./scripts/run_dev.sh server   # start mediation server
 ./scripts/run_dev.sh client   # start a client daemon
+./scripts/run_dev.sh proxy    # start reverse proxy
 ./scripts/run_dev.sh demo     # server + 2 clients in separate terminals
 ./scripts/run_dev.sh cli -- create mynet --password secret
 ./scripts/run_dev.sh clean    # remove venv + caches
@@ -124,29 +167,25 @@ scripts\run_dev.bat setup
 scripts\run_dev.bat test
 scripts\run_dev.bat server
 scripts\run_dev.bat client
+scripts\run_dev.bat proxy
 scripts\run_dev.bat demo
 scripts\run_dev.bat cli -- create mynet --password secret
 scripts\run_dev.bat clean
 ```
 
-Run `./scripts/run_dev.sh help` or `scripts\run_dev.bat help` for the full in-script reference.
-
 ---
 
-## 6. Testing
+## 7. Testing
 
 ```bash
 python -m pytest tests/ -v                          # full suite
 python -m pytest tests/test_nat_traversal.py -v     # one file
 python -m pytest tests/test_nat_traversal.py::TestPunchPeer -v   # one class
-python -m pytest tests/test_nat_traversal.py::TestPunchPeer::test_two_local_sockets_punch_succeeds -v  # one test
 ```
 
 ---
 
-## 7. Environment variables
-
-Set in the shell or a `.env` file — same effect as the matching CLI flag.
+## 8. Environment variables
 
 | Variable | Equivalent | Applies to |
 |----------|-----------|------------|
@@ -155,6 +194,8 @@ Set in the shell or a `.env` file — same effect as the matching CLI flag.
 | `LNSERVER_WEB_PORT` | `--web-port` | server |
 | `LNSERVER_MAX_CLIENTS` | `--max-clients` | server |
 | `LNSERVER_LOG_LEVEL` | `--log-level` | server |
+| `LNSERVER_ADMIN_USER` | Admin username | server web panel |
+| `LNSERVER_ADMIN_PASS` | Admin password | server web panel |
 | `LNCLIENT_SERVER` | `--server` (host:port) | client |
 | `LNCLIENT_SERVER_HOST` | `--server` (host) | client |
 | `LNCLIENT_SERVER_PORT` | `--server` (port) | client |
@@ -165,7 +206,7 @@ Set in the shell or a `.env` file — same effect as the matching CLI flag.
 
 ---
 
-## 8. Quick troubleshooting
+## 9. Quick troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
@@ -174,16 +215,19 @@ Set in the shell or a `.env` file — same effect as the matching CLI flag.
 | `Identity error` on CLI | Run `localnetwork-client` once to generate an identity |
 | `WRONG_PASSWORD` on join | Passwords are case-sensitive |
 | `NO_SHARED_NETWORK` | Both clients must join the same network first |
+| TUN `Permission denied` | TUN mode needs root — use `sudo` |
+| Proxy 502 Bad Gateway | Upstream backend not reachable |
 
 ---
 
-## 9. Where things live
+## 10. Where things live
 
 ```
 server/     Mediation server (registry, networks, relay, web admin)
-client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN)
-proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, SSL)
-common/     Shared protocol constants, messages, frames, web UI assets
+client/     VPN client (identity, control channel, NAT traversal, tunnels, TUN, web admin)
+proxy/      Reverse proxy / load balancer (master-worker, HTTP, caching, web admin)
+common/     Shared protocol constants, messages, frames, errors, logging, web UI assets
 scripts/    Dev runner scripts (run_dev.sh / run_dev.bat)
 tests/      Unit & integration tests (pytest)
+docs/       Architecture (DESIGN.md) and phased implementation plan
 ```

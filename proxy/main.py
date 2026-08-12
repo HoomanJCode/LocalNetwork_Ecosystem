@@ -11,9 +11,11 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
+import threading
 from typing import Optional
 
 from proxy.config import load_config, ProxyConfig
@@ -88,6 +90,10 @@ def main(argv: Optional[list] = None) -> int:
               f"workers={config.workers or 'auto'})")
         return 0
 
+    # Start the admin web panel (if enabled)
+    if config.admin_port > 0:
+        _start_admin_panel(config)
+
     # Start the reverse proxy
     master = MasterProcess(config)
     try:
@@ -99,6 +105,32 @@ def main(argv: Optional[list] = None) -> int:
         log.error("fatal: %r", exc)
         return 1
     return 0
+
+
+def _start_admin_panel(config: ProxyConfig) -> None:
+    """Start the admin web panel in a background daemon thread."""
+    from aiohttp import web
+
+    from proxy.status import StatusCollector
+    from proxy.web.app import create_app
+
+    def run_admin() -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        app = create_app(status_collector=StatusCollector(), config=config)
+        runner = web.AppRunner(app)
+        loop.run_until_complete(runner.setup())
+        site = web.TCPSite(runner, "0.0.0.0", config.admin_port)
+        loop.run_until_complete(site.start())
+        log.info("proxy admin panel listening on 0.0.0.0:%d", config.admin_port)
+        try:
+            loop.run_forever()
+        finally:
+            loop.run_until_complete(runner.cleanup())
+            loop.close()
+
+    thread = threading.Thread(target=run_admin, daemon=True, name="lnproxy-admin")
+    thread.start()
 
 
 if __name__ == "__main__":

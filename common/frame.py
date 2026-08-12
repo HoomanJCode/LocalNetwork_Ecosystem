@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 from .constants import (
+    FRAME_CLOSE,
     FRAME_DATA,
     FRAME_FORWARDED_STREAM,
     FRAME_HEADER_SIZE,

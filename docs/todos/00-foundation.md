@@ -46,7 +46,7 @@
   - `FRAME_HEADER_SIZE = 8`
   - `GCM_TAG_SIZE = 16`
 
-- [ ] 1.4 **Write tests:**
+- [x] 1.4 **Write tests:**
   - `tests/test_protocol.py` — serialize/deserialize round-trip for all message types
   - `tests/test_packet.py` — pack/unpack round-trip, invalid frame rejection, boundary cases
 

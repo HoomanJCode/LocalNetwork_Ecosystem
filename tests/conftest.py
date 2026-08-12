@@ -40,22 +40,7 @@ def identity_dir(tmp_path):
     """Dedicated temp directory for identity keys."""
     d = tmp_path / "identity"
     d.mkdir()
-    return d
-
-
-@pytest.fixture
-def event_loop_policy():
-    """Yield an event loop policy appropriate for the platform."""
-    if sys.platform == "win32":
-        try:
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        except AttributeError:  # pragma: no cover - Python without Windows policies
-            pass
-    yield
-    asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
-
-
-# ---- Async helpers ----------------------------------------------------------
+    return d# ---- Async helpers ----------------------------------------------------------
 
 def run_async(coro):
     """Run a coroutine to completion inside a fresh event loop (sync tests)."""

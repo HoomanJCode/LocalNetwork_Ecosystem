@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">NAT Diagnostics</h2>
+<div class="stat-card"><div class="stat-label">NAT Type</div><div class="stat-value" style="font-family:monospace;">{{ nat_type }}</div></div>
+<div class="stat-card" style="margin-top:16px;">
+    <div class="stat-label">P2P Compatibility</div>
+    <p style="color:var(--text-secondary);font-size:14px;">NAT type affects P2P connectivity. Full Cone and Open NATs can connect to anyone. Symmetric NATs may require relay fallback.</p>
+</div>
+{% endblock %}

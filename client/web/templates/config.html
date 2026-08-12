@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Configuration</h2>
+<div class="stat-card" style="max-width:600px;">
+    <form method="post" action="/config">
+        <label style="display:block;font-size:14px;margin-bottom:6px;">Server Address</label>
+        <input style="width:100%;padding:10px;background:var(--bg-tertiary);border:1px solid #3a4058;border-radius:8px;color:var(--text-primary);margin-bottom:16px;" type="text" name="server" value="localhost:54000">
+        <label style="display:block;font-size:14px;margin-bottom:6px;">Log Level</label>
+        <select style="width:100%;padding:10px;background:var(--bg-tertiary);border:1px solid #3a4058;border-radius:8px;color:var(--text-primary);margin-bottom:16px;" name="log_level">
+            <option value="INFO">INFO</option>
+            <option value="DEBUG">DEBUG</option>
+            <option value="WARNING">WARNING</option>
+        </select>
+        <button style="padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

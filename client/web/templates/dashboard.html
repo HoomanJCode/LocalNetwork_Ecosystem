@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin-bottom:20px;">Dashboard</h2>
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Status</div>
+        <div class="stat-value" style="color:{{ 'var(--success)' if status == 'connected' else 'var(--danger)' }};">
+            <span class="status-dot {{ 'green' if status == 'connected' else 'red' }}"></span>{{ status }}
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Virtual IP</div>
+        <div class="stat-value" style="font-family:monospace;">{{ virtual_ip }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Active Tunnels</div>
+        <div class="stat-value">{{ tunnels_active }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Uptime</div>
+        <div class="stat-value" style="color:var(--accent);">{{ uptime }}</div>
+    </div>
+</div>
+{% endblock %}

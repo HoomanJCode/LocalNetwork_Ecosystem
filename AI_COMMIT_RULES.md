@@ -59,22 +59,31 @@
 
 ## 3. Branch Naming
 
-Use one temporary branch per todo task:
+Use one temporary branch per **unit of work** (a coherent bundle of related
+fixes/tasks). Name it after the area, not after a single task:
 
 ```
-feat/task-<phase>.<task>-<short-description>
-fix/task-<phase>.<task>-<short-description>
+feat/<area>-<short-description>
+fix/<area>-<short-description>
+refactor/<area>-<short-description>
+docs/<area>-<short-description>
 ```
 
 Examples:
-- `feat/task-5.1-platform-detection`
-- `feat/task-17.1-proxy-config`
+- `feat/platform-detection`
+- `fix/proxy-config-bugs`
+- `feat/task-5.1-platform-detection` (single task that is itself a unit)
 - `fix/task-3.3-registry-bug`
 
 ### Branch rules
 - Always branch off the **latest `master`**.
-- Keep the branch focused on **one task** — never mix multiple tasks in one branch.
-- If you need to work on two tasks that depend on each other, finish and merge the first
+- A branch **may hold multiple related fixes or tasks** — that is expected.
+  Group work that belongs together (same area, same phase, same bug cluster);
+  never mix genuinely unrelated work in one branch.
+- **Never merge a branch with only one commit.** If a branch ends up with a
+  single commit, stop and split it into smaller steps (or add the missing
+  intermediate commits) before merging.
+- If two units of work depend on each other, finish and merge the first
   before starting the second.
 - **Never push the temp branch** unless collaborating with other humans.
 
@@ -117,7 +126,9 @@ docs(todos): mark phase 5 complete
 
 ### 4.4 How to break work into commits
 
-Within a single task branch, commit **after each logical step**:
+Commit **after every logical step** — a step is the smallest unit that leaves
+the tree in a sensible state (a working function, a module, a test file, a
+wiring change, a bug fix). Small commits are the default, not the exception:
 
 | Step | Commit |
 |------|--------|
@@ -126,10 +137,15 @@ Within a single task branch, commit **after each logical step**:
 | Wire it into the system | `feat(client): integrate nat_traversal into tunnel_manager` |
 | Add tests | `test(nat): add hole-punch success and timeout tests` |
 | Run tests, fix failures | `fix(nat): handle socket timeout edge case` |
+| Update docs/todos | `docs(todos): mark task 5.1 complete` |
+
+**A branch should end up with 5–20+ commits.** If you catch yourself staging
+"all remaining changes", stop and break the work into smaller steps instead.
 
 ### 4.5 Commit hygiene
 
 - **One logical change per commit.** Don't bundle unrelated edits.
+- **Never merge a single-commit branch.** Small steps → many commits → merge.
 - **Never commit generated files, secrets, or config with credentials.**
   Check `.gitignore` is up to date.
 - **Never commit with `--no-verify`** — let tests/lints run.
@@ -205,10 +221,12 @@ After a rename, update `TODO.md`:
 ```bash
 git checkout master
 git pull --ff-only              # stay in sync (if remote exists)
-git merge --no-ff feat/task-5.1
+git merge --no-ff feat/area-desc
 ```
 
-**Always use `--no-ff`** so the branch's commits stay grouped in history.
+**Always use `--no-ff`** — never fast-forward — so the branch's commits stay
+grouped in history and each merge is visible as an explicit merge commit.
+A merge with `--no-ff` is mandatory even for single-topic branches.
 
 ### 7.2 Merge commit message
 
@@ -256,6 +274,9 @@ git push origin master            # only if a remote exists and user asked
 |---------|-----|
 | Committing directly to `master` | Always `git checkout -b` first. |
 | One huge commit with everything | Split into logical steps, commit after each. |
+| Merging a branch with a **single** commit | Branch = many small commits (5–20+). Split the work further. |
+| Saving up edits until the end | Commit after every logical step, not at the end. |
+| Fast-forwarding a merge | Always `git merge --no-ff`; never `--ff-only`. |
 | Forgetting to update the todo file | Update `[x]` marks **before** the merge. |
 | Renaming to `passed` too early | Only rename when ALL tasks in the file are done + tests pass. |
 | Leaving temp branches behind | Delete after merge with `git branch -d`. |

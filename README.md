@@ -321,8 +321,9 @@ MIT
 
 ## Development
 
-See [DESIGN.md](DESIGN.md) for architecture and protocol details, and [TODO.md](TODO.md)
-for the phased implementation plan.
+See [DESIGN.md](DESIGN.md) for architecture and protocol details, [TODO.md](TODO.md)
+for the phased implementation plan, and [AI_COMMIT_RULES.md](AI_COMMIT_RULES.md)
+for the git workflow AI agents must follow.
 
 ### Running tests
 

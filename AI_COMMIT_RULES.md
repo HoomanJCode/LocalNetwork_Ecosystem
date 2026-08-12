@@ -11,7 +11,10 @@
 |------|-----|
 | **Never commit directly to `master`** | Every change goes through a temporary branch that gets reviewed, merged, and deleted. |
 | **Never make a single giant commit** | Break work into small, logical, reviewable commits. One commit per logical step. |
-| **One temporary branch per todo item** | A "todo" is a task from the TODO files (see `TODO.md` → `docs/todos/*.md`). |
+| **Many small commits per branch — never a single commit** | A branch exists to accumulate a series of fixes/features; merge it only after several small commits (typically 5–20+). A branch with one commit is a warning sign — split the work further. |
+| **One temporary branch per unit of work** | A "unit of work" is a coherent bundle of related fixes or tasks (e.g. all fixes for one feature area, one phase, or a bug cluster from the TODO files). Group related tasks on the same branch; use separate branches for unrelated work. |
+| **Commit small pieces, step by step** | After every logical step (a working function, a test, a wiring change) make a small commit. Never save up edits into one commit at the end. |
+| **Merge with `--no-ff` only** | Always create a merge commit so the branch's commits stay grouped in history. Never fast-forward. |
 | **Update the todo files to reflect reality** | Mark tasks done, rename files that fully passed. |
 
 ---
@@ -20,33 +23,35 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  1. Pick a todo item (e.g. Phase 5, task 5.1)                   │
+│  1. Pick a unit of work (a todo task, a phase, or a bug cluster)│
 │                                                                 │
 │  2. Create a temporary branch from master                       │
-│       git checkout master && git checkout -b feat/task-5.1      │
+│       git checkout master && git checkout -b feat/area-desc      │
 │                                                                 │
-│  3. Implement the task in small steps.                          │
-│     After EACH logical step, make a small commit                │
-│     (see §3 for commit message format).                         │
-│     ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐             │
-│     │ commit │→ │ commit │→ │ commit │→ │ commit │  (3-10+)   │
-│     └────────┘  └────────┘  └────────┘  └────────┘             │
+│  3. Implement the work in many small steps.                     │
+│     After EACH logical step, make a small commit.               │
+│     NEVER merge a branch with a single commit.                  │
+│     ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
+│     │commit 1│→ │commit 2│→ │commit 3│→ │commit 4│→ │  ...   │ │
+│     └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
+│     (5–20+ commits; see §4 for message format)                 │
 │                                                                 │
-│  4. Run the relevant tests / lints for the task                 │
+│  4. Run the relevant tests / lints for the work                 │
 │       python -m pytest tests/test_xxx.py -v                     │
+│     Fix failures with further small commits, then re-run.       │
 │                                                                 │
 │  5. BEFORE merging: update the todo file                        │
 │     - Mark completed task items as [x]                          │
 │     - If the whole FILE's phases passed: add "passed" suffix    │
 │                                                                 │
-│  6. Merge the branch into master (no fast-forward, keep history)│
+│  6. Merge the branch into master with --no-ff (never ff)        │
 │       git checkout master                                       │
-│       git merge --no-ff feat/task-5.1                           │
+│       git merge --no-ff feat/area-desc                          │
 │                                                                 │
 │  7. Delete the temporary branch                                 │
-│       git branch -d feat/task-5.1                               │
+│       git branch -d feat/area-desc                              │
 │                                                                 │
-│  8. Move to the next todo item                                  │
+│  8. Move to the next unit of work                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,22 +59,31 @@
 
 ## 3. Branch Naming
 
-Use one temporary branch per todo task:
+Use one temporary branch per **unit of work** (a coherent bundle of related
+fixes/tasks). Name it after the area, not after a single task:
 
 ```
-feat/task-<phase>.<task>-<short-description>
-fix/task-<phase>.<task>-<short-description>
+feat/<area>-<short-description>
+fix/<area>-<short-description>
+refactor/<area>-<short-description>
+docs/<area>-<short-description>
 ```
 
 Examples:
-- `feat/task-5.1-platform-detection`
-- `feat/task-17.1-proxy-config`
+- `feat/platform-detection`
+- `fix/proxy-config-bugs`
+- `feat/task-5.1-platform-detection` (single task that is itself a unit)
 - `fix/task-3.3-registry-bug`
 
 ### Branch rules
 - Always branch off the **latest `master`**.
-- Keep the branch focused on **one task** — never mix multiple tasks in one branch.
-- If you need to work on two tasks that depend on each other, finish and merge the first
+- A branch **may hold multiple related fixes or tasks** — that is expected.
+  Group work that belongs together (same area, same phase, same bug cluster);
+  never mix genuinely unrelated work in one branch.
+- **Never merge a branch with only one commit.** If a branch ends up with a
+  single commit, stop and split it into smaller steps (or add the missing
+  intermediate commits) before merging.
+- If two units of work depend on each other, finish and merge the first
   before starting the second.
 - **Never push the temp branch** unless collaborating with other humans.
 
@@ -112,7 +126,9 @@ docs(todos): mark phase 5 complete
 
 ### 4.4 How to break work into commits
 
-Within a single task branch, commit **after each logical step**:
+Commit **after every logical step** — a step is the smallest unit that leaves
+the tree in a sensible state (a working function, a module, a test file, a
+wiring change, a bug fix). Small commits are the default, not the exception:
 
 | Step | Commit |
 |------|--------|
@@ -121,10 +137,15 @@ Within a single task branch, commit **after each logical step**:
 | Wire it into the system | `feat(client): integrate nat_traversal into tunnel_manager` |
 | Add tests | `test(nat): add hole-punch success and timeout tests` |
 | Run tests, fix failures | `fix(nat): handle socket timeout edge case` |
+| Update docs/todos | `docs(todos): mark task 5.1 complete` |
+
+**A branch should end up with 5–20+ commits.** If you catch yourself staging
+"all remaining changes", stop and break the work into smaller steps instead.
 
 ### 4.5 Commit hygiene
 
 - **One logical change per commit.** Don't bundle unrelated edits.
+- **Never merge a single-commit branch.** Small steps → many commits → merge.
 - **Never commit generated files, secrets, or config with credentials.**
   Check `.gitignore` is up to date.
 - **Never commit with `--no-verify`** — let tests/lints run.
@@ -200,10 +221,12 @@ After a rename, update `TODO.md`:
 ```bash
 git checkout master
 git pull --ff-only              # stay in sync (if remote exists)
-git merge --no-ff feat/task-5.1
+git merge --no-ff feat/area-desc
 ```
 
-**Always use `--no-ff`** so the branch's commits stay grouped in history.
+**Always use `--no-ff`** — never fast-forward — so the branch's commits stay
+grouped in history and each merge is visible as an explicit merge commit.
+A merge with `--no-ff` is mandatory even for single-topic branches.
 
 ### 7.2 Merge commit message
 
@@ -251,6 +274,9 @@ git push origin master            # only if a remote exists and user asked
 |---------|-----|
 | Committing directly to `master` | Always `git checkout -b` first. |
 | One huge commit with everything | Split into logical steps, commit after each. |
+| Merging a branch with a **single** commit | Branch = many small commits (5–20+). Split the work further. |
+| Saving up edits until the end | Commit after every logical step, not at the end. |
+| Fast-forwarding a merge | Always `git merge --no-ff`; never `--ff-only`. |
 | Forgetting to update the todo file | Update `[x]` marks **before** the merge. |
 | Renaming to `passed` too early | Only rename when ALL tasks in the file are done + tests pass. |
 | Leaving temp branches behind | Delete after merge with `git branch -d`. |

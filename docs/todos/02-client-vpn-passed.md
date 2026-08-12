@@ -136,7 +136,7 @@
 
 ## Phase 8 — TUN Virtual Interface
 
-- [ ] 8.1 **`client/tun_interface.py`**
+- [x] 8.1 **`client/tun_interface.py`**
   - `TunInterface` abstract base class:
     - `open(ip: str, netmask: str, mtu: int)`
     - `read() -> bytes` — read one IP packet
@@ -162,18 +162,18 @@
 
   - `create_tun_interface() -> TunInterface` — factory based on `platform.system()`
 
-- [ ] 8.2 **Routing integration** (Linux-specific for MVP):
+- [x] 8.2 **Routing integration** (Linux-specific for MVP):
   - After TUN is up: add route for `25.0.0.0/8` via the TUN interface
   - On shutdown: remove the route
   - Skip on Windows/macOS initially (manual route setup instructions in README)
 
-- [ ] 8.3 **Main loop integration:**
+- [x] 8.3 **Main loop integration:**
   - `TunInterface.read()` → `TunnelManager.send_data()` (to appropriate peer)
   - `TunnelManager.recv_data()` → `TunInterface.write()`
   - Need IP→peer_id mapping: parse dst IP from IP header, look up which peer has that virtual IP
   - ARP handling (basic): respond to ARP requests for our virtual IP
 
-- [ ] 8.4 **Write tests:**
+- [x] 8.4 **Write tests:**
   - `tests/test_tun_interface.py`
     - Skip on CI unless running as root (mark with `pytest.mark.skipif`)
     - Test on Linux with sudo: open → assign IP → read/write loopback
@@ -184,26 +184,26 @@
 
 ## Phase 9 — Network Topologies
 
-- [ ] 9.1 **Mesh topology**
+- [x] 9.1 **Mesh topology**
   - Default mode. Client opens tunnels to ALL online peers in the network.
   - On PEER_ONLINE: create tunnel to new peer.
   - On PEER_OFFLINE: close tunnel to departed peer.
 
-- [ ] 9.2 **Hub-and-Spoke topology**
+- [x] 9.2 **Hub-and-Spoke topology**
   - Client checks if it is the designated Hub.
   - If Hub: accept tunnels from all spokes. Forward traffic between spokes
     (destination NAT at L3: rewrite dst IP, forward out correct tunnel).
   - If Spoke: only open tunnel to Hub. Route all traffic through Hub.
   - Server enforces: spokes don't receive each other's endpoints.
 
-- [ ] 9.3 **Gateway topology**
+- [x] 9.3 **Gateway topology**
   - Gateway client opens TUN interface AND bridges to physical LAN.
   - Enable IP forwarding on gateway: `sysctl net.ipv4.ip_forward=1`.
   - ARP proxy: gateway responds to ARP requests for virtual IPs on the physical LAN.
   - Remote clients route `0.0.0.0/0` (or specific subnets) through the gateway's tunnel.
   - NAT/masquerade outbound traffic from VPN to physical LAN (iptables MASQUERADE).
 
-- [ ] 9.4 **Write tests:**
+- [x] 9.4 **Write tests:**
   - `tests/test_topologies.py`
     - Mesh: 3 clients, all can ping each other
     - Hub-and-spoke: spokes can ping hub; spokes CANNOT ping each other directly

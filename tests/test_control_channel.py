@@ -75,8 +75,10 @@ class TestRegistrationFlow:
     async def test_create_network_returns_id(self, server_port, tmp_path):
         port, _ = server_port
         channel, _ = await connect_client(port, tmp_path, "a")
-        network_id = await channel.create_network("testnet", "secret", "mesh")
+        result = await channel.create_network("testnet", "secret", "mesh")
+        network_id = result["network_id"]
         assert network_id
+        assert result["invite_code"]
         networks = await channel.list_networks()
         assert any(n["network_id"] == network_id for n in networks)
         await channel.close()
@@ -85,7 +87,7 @@ class TestRegistrationFlow:
     async def test_join_with_wrong_password_fails(self, server_port, tmp_path):
         port, _ = server_port
         channel_a, _ = await connect_client(port, tmp_path, "a")
-        network_id = await channel_a.create_network("testnet", "secret")
+        network_id = (await channel_a.create_network("testnet", "secret"))["network_id"]
 
         channel_b, _ = await connect_client(port, tmp_path, "b")
         with pytest.raises(Exception):
@@ -101,7 +103,7 @@ class TestPeerFlow:
     ):
         port, server = server_port
         channel_a, client_a = await connect_client(port, tmp_path, "a")
-        network_id = await channel_a.create_network("testnet", "secret")
+        network_id = (await channel_a.create_network("testnet", "secret"))["network_id"]
 
         # Start consuming events before B joins
         event_task = asyncio.create_task(channel_a.listen_events().__anext__())
@@ -129,7 +131,7 @@ class TestPeerFlow:
     async def test_leave_network(self, server_port, tmp_path):
         port, _ = server_port
         channel_a, _ = await connect_client(port, tmp_path, "a")
-        network_id = await channel_a.create_network("testnet", "secret")
+        network_id = (await channel_a.create_network("testnet", "secret"))["network_id"]
         await channel_a.leave_network(network_id)
         networks = await channel_a.list_networks()
         assert all(n["network_id"] != network_id for n in networks)

@@ -102,7 +102,7 @@ class TestSerializeRoundTrip:
             (m.AuthResponse, {"signature": "s", "challenge": "c"}),
             (m.AuthResult, {"ok": True, "message": "hi", "virtual_ip": "25.0.0.1"}),
             (m.CreateNetwork, {"name": "n", "password": "p", "topology": "mesh"}),
-            (m.NetworkCreated, {"network_id": "n", "name": "n"}),
+            (m.NetworkCreated, {"network_id": "n", "name": "n", "invite_code": "ABC123"}),
             (m.JoinNetwork, {"network_id": "n", "password": "p"}),
             (m.NetworkJoined, {"network_id": "n", "virtual_ip": "25.0.0.2"}),
             (m.LeaveNetwork, {"network_id": "n"}),

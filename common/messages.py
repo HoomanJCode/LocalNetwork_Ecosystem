@@ -193,6 +193,7 @@ class NetworkCreated:
     name: str = ""
     owner_id: str = ""
     topology: str = ""
+    invite_code: str = ""
 
 
 @dataclass

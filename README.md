@@ -6,8 +6,14 @@ A Python-based networking toolkit with three core features:
 - **Reverse Proxy** — high-performance HTTP/TCP load balancer and traffic manager
 - **Web Admin Panels** — browser-based dashboards for server, client, and proxy
 
-> **Status:** All 23 phases complete. Production-ready core. See [TODO.md](TODO.md) for details.
+> ⚠️ **EXPERIMENTAL — DO NOT USE IN PRODUCTION.**
+>
+> This is an experimental project that has **not been tested or audited** for real-world use.
+> It may contain bugs, security issues, or breaking changes at any time. Use it only for
+> development, testing, and learning purposes.
+>
 > **Quick start:** see [USAGE.md](USAGE.md) for the one-page command reference.
+> **Details:** see [TODO.md](TODO.md) for the phased implementation plan.
 
 ---
 
